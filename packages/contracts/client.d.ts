@@ -1268,6 +1268,27 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        authenticated: true;
+                        user: {
+                            /** Format: uuid */
+                            id: string;
+                            displayName: string;
+                            studyTimezone: string | null;
+                            onboardingState: string;
+                            revision: number;
+                        };
+                        csrfToken: string;
+                    };
+                };
+            };
+            /** @description Default Response */
             401: {
                 headers: {
                     [name: string]: unknown;

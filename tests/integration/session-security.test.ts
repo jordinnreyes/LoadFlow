@@ -4,7 +4,11 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { database } from "../../server/db/client.js";
 import { Academics } from "../../server/modules/academics/service.js";
-import { Identity } from "../../server/modules/identity/service.js";
+import {
+  Identity,
+  OAUTH_COOKIE,
+  SESSION_COOKIE,
+} from "../../server/modules/identity/service.js";
 import type {
   AuthProvider,
   IdentityProof,
@@ -148,6 +152,53 @@ test("refresh is serialized, sessions expire, encrypted tokens stay private and 
     await assert.rejects(identity.authenticate(fresh.cookie), { status: 401 });
     const app = await buildApp({ identity });
     try {
+      const httpStart = await app.inject("/api/v1/auth/google/start");
+      assert.equal(httpStart.statusCode, 302);
+      const oauthHeader = String(httpStart.headers["set-cookie"]);
+      const oauthCookie = oauthHeader.split(";")[0];
+      assert.ok(oauthCookie.startsWith(OAUTH_COOKIE + "="));
+      const callbackUrl = "/api/v1/auth/google/callback?code=fixture-code";
+      const callback = await app.inject({
+        url: callbackUrl,
+        headers: { cookie: oauthCookie },
+      });
+      assert.equal(
+        callback.statusCode,
+        200,
+        "success must not redirect to an unserved dashboard",
+      );
+      assert.equal(callback.headers.location, undefined);
+      assert.equal(callback.json().authenticated, true);
+      assert.equal(callback.json().user.id, data.user.id);
+      assert.ok(
+        !callback.body.includes("accessToken") &&
+          !callback.body.includes("refreshToken"),
+      );
+      assert.equal(callback.headers["cache-control"], "no-store");
+      const responseCookies = callback.headers["set-cookie"];
+      const sessionCookie = (
+        Array.isArray(responseCookies)
+          ? responseCookies
+          : [String(responseCookies)]
+      )
+        .find((value) => value.startsWith(SESSION_COOKIE + "="))!
+        .split(";")[0];
+      assert.ok(sessionCookie);
+      const session = await app.inject({
+        url: "/api/v1/auth/session",
+        headers: { cookie: sessionCookie },
+      });
+      assert.equal(session.statusCode, 200);
+      assert.equal(session.json().user.id, data.user.id);
+      assert.equal(
+        (
+          await app.inject({
+            url: callbackUrl,
+            headers: { cookie: oauthCookie },
+          })
+        ).statusCode,
+        401,
+      );
       assert.equal(
         (
           await app.inject({

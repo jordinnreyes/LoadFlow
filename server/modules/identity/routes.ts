@@ -197,7 +197,7 @@ export async function identityRoutes(
           },
           strict,
         ),
-        response: errors,
+        response: { 200: SessionResponse, ...errors },
       },
     },
     async (request, reply) => {
@@ -207,8 +207,9 @@ export async function identityRoutes(
         request.cookies[OAUTH_COOKIE],
         request.query.error ? undefined : request.query.code,
       );
-      issue(reply, result);
-      return reply.redirect(`${identity.config.origin}/#/tablero`);
+      // Until F6 connects the web client, finish at the API with the same
+      // verified-session contract as OTP instead of redirecting to an absent UI.
+      return issue(reply, result);
     },
   );
 }

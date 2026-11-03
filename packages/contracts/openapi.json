@@ -2214,6 +2214,70 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "authenticated",
+                    "user",
+                    "csrfToken"
+                  ],
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "user": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "displayName",
+                        "studyTimezone",
+                        "onboardingState",
+                        "revision"
+                      ],
+                      "properties": {
+                        "id": {
+                          "format": "uuid",
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "studyTimezone": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "onboardingState": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "minimum": 1,
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "csrfToken": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "401": {
             "description": "Default Response",
             "content": {
