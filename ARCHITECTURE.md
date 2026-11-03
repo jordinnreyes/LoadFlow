@@ -1,10 +1,14 @@
-# CargaWise — Arquitectura técnica propuesta
+# CargaWise — Arquitectura técnica
 
-Versión 1.0 · 3 de noviembre de 2026 · **Pendiente de aprobación del promotor**.
+Versión 1.1 · 3 de noviembre de 2026 · **Aprobado para implementación**.
 
-Esta entrega define una solución implementable; no instala dependencias, crea infraestructura ni transforma el prototipo. La aprobación de estos documentos será el punto de partida de [PLAN.md](./PLAN.md). Ninguna propuesta técnica o política operativa se convierte en decisión aprobada por aparecer aquí.
+**Registro de aprobación:** el promotor y responsable del producto aprobó este documento y [PLAN.md](./PLAN.md) como base de implementación el **3 de noviembre de 2026 (America/Lima)**. Gate **G0: Aprobado**. Se aprueban las direcciones técnicas D-01/02/03/06/12/13; D-05 queda aceptada provisionalmente. Esta aprobación no acredita implementación, pruebas ni hitos de entrega y no incluye los parámetros operativos o políticas expresamente pendientes en §13.
 
-Fuentes: [PRD-v6](./PRD-v6.md), versión 0.6.0; [UX-FLOWS](./UX-FLOWS.md), C-01–C-10 y SUP-01–SUP-11; [DESIGN-SYSTEM](./DESIGN-SYSTEM.md), revisión visual 1.1; código y configuración del repositorio inspeccionados. `DESIGN.md` no existe. Las instrucciones históricas de detenerse antes del prototipo documentan entregas anteriores: la solicitud actual autoriza arquitectura y planificación, **no implementación del backend**.
+El stack aprobado conserva React + TypeScript + Vite y CSS del frontend; Fastify + Node.js + TypeScript; PostgreSQL + Supabase Auth/Storage; Drizzle; REST con OpenAPI; motor determinista; IA Premium mediante adaptador de proveedor. Capacitor es la opción preferida para Android, pendiente de comprobación técnica. Las alternativas documentadas se conservan como fundamento de la decisión, sin reabrir la selección tecnológica.
+
+Esta actualización es exclusivamente documental: no instala dependencias, crea infraestructura ni transforma el prototipo. **Fase 0 no comienza hasta la siguiente instrucción del promotor**. No autoriza recursos cloud pagados, credenciales de producción ni despliegues. Se mantienen los gates de las fases posteriores.
+
+Fuentes: [PRD-v6](./PRD-v6.md), versión 0.6.0; [UX-FLOWS](./UX-FLOWS.md), C-01–C-10 y SUP-01–SUP-11; [DESIGN-SYSTEM](./DESIGN-SYSTEM.md), revisión visual 1.1; código y configuración inspeccionados durante el diagnóstico original. `DESIGN.md` no existía en esa revisión. Los límites históricos documentan entregas anteriores; la solicitud actual autoriza registrar aprobación y planificar dos comprobaciones Android, **no ejecutar F0 ni implementar backend**.
 
 ## 1. Diagnóstico y diferencias que deben resolverse
 
@@ -39,7 +43,7 @@ Rutas conservadas: `/#/acceso`, `/#/tablero`, `/#/calendario`, `/#/importar`, `/
 | ID | Hallazgo / fuentes | Resolución propuesta antes de implementar |
 |---|---|---|
 | C-01 | RF-25/27 exigen identidad y continuidad; README y código declaran simulación local | Es una limitación deliberada del prototipo. Reemplazar acceso/almacenamiento, sin importar automáticamente perfiles ficticios a cuentas reales |
-| C-02 | Solicitud actual: registrarse e iniciar desde app sin registro previo en navegador. PRD §1.1, RF-25/27 y UX S01/F01/F02 ya contemplan ambos clientes | No hay contradicción funcional. Proponer correo con código introducido dentro de app/web; definir límites de Google en §4. No existe todavía la app empaquetada |
+| C-02 | Registro/login desde app sin alta previa en navegador; PRD §1.1, RF-25/27 y UX S01/F01/F02 contemplan ambos clientes | Sin contradicción funcional. OTP dentro de app/web y Google Sign-In aceptados provisionalmente el 03/11/2026; interfaces seguras del SO/proveedor permitidas para OAuth. No existe todavía app empaquetada; F0-07 y AM-01 verificarán viabilidad e integración |
 | C-03 | README «No se abre proveedor externo» describe el Google simulado | No es compromiso del producto real. Google real puede mostrar interfaz del proveedor/SO. No reutilizar esa frase en modo real |
 | C-04 | `plan()` ordena todo por plazo cuando mezcla prioridades declaradas y ausentes; SUP-04 deja la política abierta | Preservar captura sin inventar Media. Proponer política versionada de §7.3; requiere aprobación. No trasladar ese fallback demo como regla definitiva |
 | C-05 | Asignación voraz puede dejar trabajo sin ubicar aunque exista otra distribución; README reconoce que no prueba optimalidad | Añadir reparación determinista y distinguir conflicto probado de búsqueda inconclusa. No afirmar imposibilidad global solo por fallar la heurística |
@@ -50,11 +54,11 @@ Rutas conservadas: `/#/acceso`, `/#/tablero`, `/#/calendario`, `/#/importar`, `/
 | C-10 | El pedido introductorio nombra `arquitectura.md`, pero objetivos y entregables especifican `ARCHITECTURE.md` | Crear un único archivo canónico `ARCHITECTURE.md`; no duplicar documentos divergentes |
 | C-11 | Documentos de diseño contienen límites históricos y políticas comerciales abiertas | Conservarlos como antecedentes; este documento propone opciones. Retención, cuotas, precios y suficiencia del historial necesitan aprobación explícita |
 
-No se modifica el PRD. Los enlaces a su copia local en el repositorio pueden normalizarse para lectura en GitHub sin cambiar requisitos. Las tablas siguientes son decisiones técnicas propuestas, no una autorización de ejecución.
+No se modifica el PRD, UX-FLOWS ni DESIGN-SYSTEM en esta actualización. El estado vinculante de cada decisión figura en §13: la dirección técnica aprobada no elimina parámetros pendientes ni constituye orden de iniciar tareas en esta ejecución.
 
-## 2. Stack propuesto y alternativas
+## 2. Stack aprobado y alternativas evaluadas
 
-### 2.1 Recomendación
+### 2.1 Dirección técnica aprobada
 
 **Monolito modular TypeScript**: un despliegue Node/Fastify sirve el build de React y una API REST bajo `/api/v1`; un ejecutor de trabajos del mismo proyecto procesa importaciones, refrescos Calendar y estimaciones. PostgreSQL es el registro autoritativo. Supabase suministra PostgreSQL, Auth y Storage privado; no se expone una API de negocio alternativa desde el navegador. No Redis, Kubernetes, microservicios, vector DB ni entrenamiento propio en el MVP.
 
@@ -67,7 +71,7 @@ No se modifica el PRD. Los enlaces a su copia local en el repositorio pueden nor
 | Proveedor gestionado | Supabase PG/Auth/Storage; Neon PG + identidad y objetos de otros proveedores | Supabase reduce cuentas e integración inicial. Neon sigue siendo alternativa si costos/región/portabilidad lo justifican; abstraer identidad y objetos mediante adaptadores |
 | Acceso SQL | Drizzle + `pg`; Prisma | Drizzle con SQL/migraciones revisables y tipos TS; RLS y restricciones avanzadas se expresan en SQL cuando sea necesario. Prisma aporta herramientas maduras, pero no elimina la necesidad de SQL ni validación de políticas. [Drizzle migraciones](https://orm.drizzle.team/docs/migrations), [RLS](https://orm.drizzle.team/docs/rls) |
 | Autenticación | Supabase Auth gestionado; Auth0 u OIDC gestionado independiente | Supabase Auth por integración y correo/Google. No construir contraseñas propias ni usar correo del payload como identidad |
-| Correo | OTP escrito en la interfaz; contraseña + verificación/recuperación | OTP propuesto por acceso completo desde app y menor superficie de credenciales. Cambia el mecanismo pendiente SUP-03, requiere aprobación y SMTP confiable |
+| Correo | OTP escrito en la interfaz; contraseña + verificación/recuperación | OTP aceptado provisionalmente por acceso completo desde app. SUP-03 queda resuelto provisionalmente respecto al mecanismo; proveedor SMTP, límites y parámetros de seguridad continúan pendientes |
 | Excel | `read-excel-file/node`; ExcelJS | Lector especializado `.xlsx`, sin necesidad de escribir formatos. Probar celdas/hojas/fechas con corpus. La API actual difiere entre majors: fijar estable compatible, no copiar ejemplos viejos de `readSheetNames`. [Proyecto oficial](https://github.com/catamphetamine/read-excel-file) |
 | PDF | `pdfjs-dist` de Mozilla; Poppler `pdftotext` | PDF.js en proceso aislado para texto y posiciones; comparte entorno Node. Poppler es alternativa si las tablas del corpus lo requieren, a costa de binarios/operación adicionales. Ninguno ofrece OCR universal. [Ejemplos oficiales](https://mozilla.github.io/pdf.js/examples/) |
 | Calendar | FreeBusy + lista de calendarios; `events.list`/sincronización de eventos | FreeBusy + `calendarList.list`, sin contenido de eventos. No solicitar lectura amplia para obtener únicamente ocupación |
@@ -78,7 +82,7 @@ No se modifica el PRD. Los enlaces a su copia local en el repositorio pueden nor
 | Tests | node:test/tsx + Fastify inject + Playwright; Vitest + Supertest | Retener runner actual y añadir Fastify inject e integración con PG real local. fast-check para invariantes; tipos cliente desde OpenAPI |
 | Observabilidad | Pino + métricas simples/monitor del hosting; plataforma APM completa | Logs estructurados redactados y alertas básicas primero; OpenTelemetry/Sentry opcional si hay necesidad y presupuesto |
 | Hosting | Node/React juntos en Render; Pages estático + API Render | Un origen simplifica cookies, CSP, CORS y despliegue. Separar estáticos es evolución posible, no requisito inicial |
-| Móvil posterior | Capacitor sobre UI web; React Native/Expo con UI distinta | Capacitor es la propuesta de menor reescritura, sujeta a prueba de plugins/seguridad. No convierte la web actual en una app ni se instala ahora. Tokens y contratos pueden reutilizarse en cualquiera. [Capacitor](https://capacitorjs.com/docs) |
+| Android | Capacitor sobre UI web; React Native/Expo evaluado como alternativa | Capacitor aprobado como opción preferida, sujeto a F0-07 y AM-01. No convierte la web actual en app ni se instala en esta actualización. No se autoriza desarrollar la app completa. [Capacitor](https://capacitorjs.com/docs) |
 
 Fastify usa JSON Schema/TypeBox y Ajv para validar entradas/salidas; `@fastify/swagger` genera OpenAPI. Mantener semántica de formularios existentes y generar tipos de transporte, no compartir entidades SQL directamente con React. Usar `@js-temporal/polyfill` o equivalente verificado para resolver zonas; preferencia por Temporal tras comprobar compatibilidad en F0. Fijar versiones exactas estables en lockfile y verificar avisos de seguridad/licencias antes de instalar. No usar `latest`, versiones preliminares ni forzar `--ignore-engines` para ocultar incompatibilidad.
 
@@ -110,6 +114,14 @@ LoadFlow/
 ```
 
 Workspaces npm solo para `packages/*` y `server` cuando la extracción lo justifique. El frontend puede seguir en raíz: no se necesita trasladarlo a `apps/web` ni adoptar herramientas de monorepo. `server/modules` agrupa rutas, aplicación y repositorio de cada dominio; no crear capas vacías por cada función.
+
+### 2.3 Comprobaciones Android acotadas
+
+**F0-07 — Spike técnico Android con Capacitor**, definido en PLAN §2.1, reutilizará el build del frontend en un proyecto de prueba aislado, propuesto en `spikes/android-capacitor/`. Verificará compilación/APK de desarrollo, arranque, rutas hash, navegación, responsive y comunicación HTTPS con un endpoint explícitamente simulado o de pruebas. Investigará mecanismos seguros Google y retorno a app, sin implementar Google Sign-In real ni Calendar. No sustituye ni reconstruye `src/`.
+
+Estado actual: **Pendiente; ninguna compilación, APK, dispositivo ni conexión Android verificados**. En la futura tarea se inventariarán SDK/JDK/Gradle/emulador/dispositivo; si el entorno no permite completarla, se documentarán pasos locales y evidencias faltantes. Esa limitación no bloquea F1 ni el hito de preparación principal. Una incompatibilidad detectada se registra; no habilita cambiar el stack automáticamente.
+
+**AM-01 — Integración Android de identidad y Calendar**, definida en PLAN §14.2, dependerá del APK de prueba y de las capacidades F1/F2 operativas. Comprobará Google Sign-In, autorización Calendar independiente por flujo permitido, retorno seguro, persistencia/revocación de sesión, disponibilidad y misma cuenta/datos que web. Requiere entorno y configuración de pruebas autorizados, no producción. Se ejecutará antes de validar Android para distribución; no forma parte del DoD del backend F1/F2 ni autoriza la aplicación móvil completa. Superar F0-07 no satisface AM-01 ni RF-27 por sí solo.
 
 ## 3. Componentes, comunicación y procesos
 
@@ -170,9 +182,9 @@ Las escrituras usan `If-Match` por entidad y/o revisión del workspace según al
 
 ## 4. Autenticación y acceso desde la app
 
-### 4.1 Correo propuesto: código OTP en la propia interfaz
+### 4.1 Correo aceptado provisionalmente: código OTP en la propia interfaz
 
-S01 conserva Crear cuenta / Iniciar sesión y correo. Solicitar código, abrir correo donde prefiera y escribirlo en **la misma app o web**, sin registrarse previamente en navegador. El método propuesto no usa enlace mágico obligatorio ni contraseña. Supabase admite OTP; la plantilla debe incluir el código, porque `signInWithOtp` por defecto puede enviar un enlace. Diferenciar intención de alta de acceso existente mediante configuración del proveedor, evitando enumeración en las respuestas. [OTP oficial](https://supabase.com/docs/guides/auth/auth-email-passwordless).
+S01 conserva Crear cuenta / Iniciar sesión y correo. Solicitar código, abrir correo donde prefiera y escribirlo en **la misma app o web**, sin registrarse previamente en navegador. El método aceptado provisionalmente no usa enlace mágico obligatorio ni contraseña. Supabase admite OTP; la plantilla debe incluir el código, porque `signInWithOtp` por defecto puede enviar un enlace. Diferenciar intención de alta de acceso existente mediante configuración del proveedor, evitando enumeración en las respuestas. [OTP oficial](https://supabase.com/docs/guides/auth/auth-email-passwordless).
 
 El backend valida propósito/challenge y verifica el código con Auth; no genera ni almacena códigos en texto plano. Alta del perfil/periodo vacío es idempotente por identificador Auth y ocurre solo tras identidad verificada. Primer registro ofrece Calendar opcional, luego tablero vacío/guía; sesión existente abre tablero directo. Recuperar acceso vuelve a probar control del correo, con mensajes genéricos, límites de intentos y reenvío; no existe contraseña que restablecer. Duración e intentos son parámetros de seguridad por aprobar/probar en F1, no cuotas comerciales.
 
@@ -184,7 +196,7 @@ En web: OIDC de Google mediante Supabase, PKCE, redirect URIs exactas y callback
 
 En app futura: iniciar desde S01 y preferir SDK de identidad nativo (Android Credential Manager / Google Sign-In iOS) con ID token y nonce verificados por Auth, sin exigir que el estudiante abra la web de CargaWise. No seleccionar un plugin Capacitor sin comprobar compatibilidad, audiencia, nonce y ciclo de vida. [Supabase Google](https://supabase.com/docs/guides/auth/social-sign-in/auth-google), [Android](https://developers.google.com/identity/android-credential-manager), [iOS](https://developers.google.com/identity/sign-in/ios/start-integrating).
 
-**Límite que requiere aclaración del promotor:** «iniciar desde la app» sí se cumple. «Jamás mostrar navegador ni interfaz del proveedor en ningún flujo» no se puede garantizar: Google prohíbe enviar OAuth a una WebView controlada por la app. Calendar puede requerir una pestaña segura del sistema con retorno automático; no obliga a registrarse en navegador. Si la exigencia es cero interfaz de navegador incluso para autorizaciones Google, hay que revisar esa condición antes de implementar la integración; no eludirla incrustando login. [Política oficial Google](https://developers.google.com/identity/protocols/oauth2/policies).
+**Aclaración aprobada por el promotor el 03/11/2026:** registro/login se inician desde la app sin alta previa en navegador; se permiten interfaces seguras del SO/proveedor cuando OAuth lo requiera, incluido Calendar con retorno seguro. No se exige ausencia absoluta de interfaz externa. Se mantiene la prohibición de OAuth en WebView propia; la implementación y el retorno deben verificarse en AM-01, sin dar el flujo por probado por esta aprobación. [Política oficial Google](https://developers.google.com/identity/protocols/oauth2/policies).
 
 ### 4.3 Sesiones y autorización
 
@@ -718,29 +730,31 @@ Primeras señales para ampliar: crecimiento del pool, cola/tiempo de extracción
 
 ## 13. Decisiones arquitectónicas y aprobaciones
 
-**Aprobado por alcance** = restricción expresada en PRD/solicitud. **Propuesto** = requiere revisión de este documento; no instalado. IDs D-* se usan también en PLAN.
+**Aprobado en dirección técnica** = elección aceptada por el promotor el **03/11/2026** como base de implementación; no acredita código, compatibilidad ni pruebas. **Aceptado provisionalmente** = mecanismo de autenticación autorizado con parámetros pendientes. **Propuesto/Pendiente** = decisión específica que conserva su gate antes de la funcionalidad afectada. IDs D-* se usan también en PLAN. G0 está aprobado; la orden de comenzar F0 se reserva a la siguiente instrucción.
 
-| ADR | Problema y alternativas | Elección propuesta / fundamento | Consecuencias y riesgo | Estado |
+| ADR | Problema y alternativas | Elección / fundamento | Consecuencias y riesgo | Estado registrado el 03/11/2026 |
 |---|---|---|---|---|
-| D-01 | Reutilizar UI vs reescribir plataforma | React/Vite/CSS y rutas actuales | Adaptar servicios y formularios; no heredar falsa seguridad local | Conservación aprobada; adaptaciones por implementar tras aprobación |
-| D-02 | Backend complejo vs modular | Fastify/Node 24, un despliegue API + web; alternativa Edge Functions | Servidor propio pequeño, trabajos duraderos y pooling a gestionar | Propuesto |
-| D-03 | Servicios integrados vs proveedores separados | Supabase PG/Auth/Storage + Drizzle/pg | Dependencia de proveedor, RLS/privilegios y costo Pro | Propuesto |
+| D-01 | Reutilizar UI vs reescribir plataforma | React/Vite/CSS y rutas actuales | Adaptar servicios y formularios; no heredar falsa seguridad local | Aprobado en dirección técnica; adaptación pendiente |
+| D-02 | Backend complejo vs modular | Fastify/Node 24, un despliegue API + web; alternativa Edge Functions | Servidor propio pequeño, trabajos duraderos y pooling a gestionar | Aprobado en dirección técnica; parche/compatibilidad por verificar en F0 |
+| D-03 | Servicios integrados vs proveedores separados | Supabase PG/Auth/Storage + Drizzle/pg | Dependencia de proveedor, RLS/privilegios y costo Pro | Aprobado en dirección técnica; configuración/región/contratación pendientes |
 | D-04 | Desempate y mezcla de prioridades no declaradas | Declaradas por nivel, ausentes por plazo después; empate por confirmación/UUID | Puede relegar ausentes; mostrar y aprobar ejemplos antes de F4 | Propuesto, SUP-04 |
-| D-05 | Acceso dentro de app vs enlace/contraseña | Correo OTP dentro de interfaz; SDK Google nativo futuro | Depende de correo/plugin; autorizaciones Google pueden usar UI segura externa | Propuesto, SUP-03 y aclaración de «sin navegador» |
-| D-06 | Sesión web cliente vs backend | BFF cookie HttpOnly; bearer seguro para app futura | Manejar renovación/revocación y CSRF; no SDK Auth web persistente | Propuesto |
-| D-07 | Leer eventos vs ocupación mínima | FreeBusy + calendarList scopes mínimos | Sin IDs/títulos de evento; equivalencias por intervalo y refresh conservador | Solo lectura aprobada; mecanismos/freshness propuestos |
-| D-08 | Parser general/OCR vs extracción acotada | Lector XLSX + PDF.js textual, aislados; respaldo manual | Cobertura variable, límites y corpus antes de piloto | Free aprobado; herramientas/límites propuestos |
-| D-09 | Heurística vs solver | Reglas + reparación acotada + diagnóstico honesto | Puede no hallar solución; no confundir búsqueda parcial con prueba de imposibilidad | Propuesto, C-05 |
+| D-05 | Acceso dentro de app vs enlace/contraseña | Correo OTP dentro de interfaz y Google Sign-In; Calendar independiente | Interfaces seguras SO/proveedor permitidas; SMTP, plugins y parámetros requieren configuración/prueba | Aceptado provisionalmente; aclaración OAuth aprobada; SUP-03 operativo pendiente |
+| D-06 | Sesión web cliente vs backend | BFF cookie HttpOnly; bearer seguro para app futura | Manejar renovación/revocación y CSRF; no SDK Auth web persistente | Aprobado en dirección técnica; expiraciones/límites operativos pendientes |
+| D-07 | Leer eventos vs ocupación mínima | FreeBusy + calendarList scopes mínimos | Sin IDs/títulos de evento; equivalencias por intervalo y refresh conservador | Dirección de solo lectura/consentimiento separado aprobada; scopes efectivos/configuración/freshness por verificar o resolver |
+| D-08 | Parser general/OCR vs extracción acotada | Lector XLSX + PDF.js textual, aislados; respaldo manual | Cobertura variable, límites y corpus antes de piloto | Base técnica aceptada; cobertura, límites y corpus pendientes |
+| D-09 | Heurística vs solver | Reglas + reparación acotada + diagnóstico honesto | Puede no hallar solución; no confundir búsqueda parcial con prueba de imposibilidad | Motor determinista aprobado; reparación/diagnóstico por validar y límites pendientes, C-05 |
 | D-10 | Personalización sin datos vs calibración | Ajuste robusto con comparables y consentimiento, sin entrenamiento | Umbrales/calidad pendientes; solo activar tras aprobación | Propuesto, SUP-09 |
-| D-11 | Proveedor/modelo/costos Premium | OpenAI Responses, candidato Luna, comparación Sol | Variación, privacidad, límites y presupuesto; manual siempre | Propuesto |
-| D-12 | Concurrencia silenciosa vs versiones | ETag/If-Match, revisiones y propuestas atómicas/idempotentes | Más estados UI; transacciones/leases y S12 reales | Integridad aprobada; protocolo propuesto |
-| D-13 | Tiempos civiles fijos vs zonas | UTC + fecha/hora/zona original y ventanas recurrentes explícitas | DST, viaje e intervalos ambiguos requieren reglas y tests | Propuesto, SUP-01/02/05 |
-| D-14 | Gratuito total vs operación confiable | Local gratuito; staging aislado; producción presupuestada Render + Pro | SMTP/backup/egress y dimensionamiento pueden superar base | Propuesto; ningún gasto autorizado |
+| D-11 | Proveedor/modelo/costos Premium | Adaptador de proveedor; OpenAI Responses y modelos candidatos documentados | Variación, privacidad, límites y presupuesto; manual siempre | Adaptador IA Premium aprobado; modelo, tratamiento, evaluación, límites y gasto pendientes |
+| D-12 | Concurrencia silenciosa vs versiones | ETag/If-Match, revisiones y propuestas atómicas/idempotentes | Más estados UI; transacciones/leases y S12 reales | Aprobado en dirección técnica; implementación y pruebas pendientes |
+| D-13 | Tiempos civiles fijos vs zonas | UTC + fecha/hora/zona original y ventanas recurrentes explícitas | DST, viaje e intervalos ambiguos requieren reglas y tests | Aprobado en dirección técnica; políticas SUP-01/02/05 pendientes antes del comportamiento afectado |
+| D-14 | Gratuito total vs operación confiable | Local gratuito; staging aislado; producción presupuestada Render + Pro | SMTP/backup/egress y dimensionamiento pueden superar base | Estrategia por ambientes aceptada como base; costos, región, contratación y despliegue pendientes |
 | D-15 | Retención/destrucción genérica vs política explícita | Minimizar datos, retirada documental sin borrar obligaciones; política completa antes de piloto | Bloquea uso con datos reales hasta resolver DP-26; sin inventar días | Pendiente de decisión de producto |
-| D-16 | App futura con reescritura vs reutilización | Evaluar Capacitor y plugins nativos manteniendo API común | Store review, claves, enlaces y secure storage necesitan etapa propia | Propuesto; no se desarrolla app ahora |
+| D-16 | App futura con reescritura vs reutilización | Capacitor como opción preferida Android y API común | APK, plugins, enlaces y secure storage requieren comprobación; app completa fuera del spike | Preferencia aprobada; F0-07 y AM-01 Pendiente, sin app validada para distribución |
 | D-17 | Premium comercial completo vs derechos de piloto | Derechos servidor auditados; pagos fuera de alcance | No autosuscripción real; política de activación/downgrade por aprobar | Sin cobro aprobado; mecanismo propuesto |
 
 Además requieren aprobación: límites de archivo/tiempo; cadencia y cobertura Calendar; expiración de sesiones/OTP; cero esfuerzo y reapertura de cierre (SUP-08); política de retención, eliminación y respaldo; límites/criterios de suficiencia/comparabilidad y tolerancia Premium; destino/región de datos y presupuesto. Un gasto o uso de credenciales no queda autorizado por aprobar un diagrama.
+
+La aprobación global mantiene pendientes D-04/SUP-04, D-10/SUP-09, D-15 y las políticas comerciales de D-17. Los montos de §12 son referencias sin autorización de gasto. No se aprueban automáticamente parámetros por defecto de bibliotecas, versiones no verificadas, pruebas T*, hitos M* ni requisitos RF/RNF. La aceptación de OTP no fija expiración, intentos, SMTP o retención; la dirección UTC/zonas no decide cortes intradía u horizonte ambiguos.
 
 ## 14. Trazabilidad y criterio de salida
 
@@ -761,4 +775,4 @@ Además requieren aprobación: límites de archivo/tiempo; cadencia y cobertura 
 
 SUP-01/02/05 se abordan en §7.1/9; SUP-03 en §4; SUP-04 en §7.3; SUP-06/07 en §7.5/10; SUP-08 en §7.2/9 y gate de F1/F4; SUP-09 en §8/13; SUP-10 en §6/12/13; SUP-11 conserva objetivo de accesibilidad sin certificarlo. No se resuelve una política pendiente solo porque una biblioteca tenga un valor por defecto.
 
-Resultado de esta etapa: diagnóstico, stack y alternativas, contratos, modelo físico, diagramas y plan revisables. La aplicación sigue siendo el prototipo local y no se ha creado backend, migración, cuenta cloud, pago, integración real ni aplicación móvil. Aprobar D-* y gates relevantes en [PLAN.md](./PLAN.md) antes de comenzar F0; producción requiere autorización adicional explícita.
+Resultado de esta actualización: arquitectura aprobada como base, G0 aprobado y comprobaciones Android incorporadas al plan. La aplicación sigue siendo el prototipo local; no se han creado backend, migración, proyecto Android, APK, cuenta cloud, pago o integración real en esta ejecución. **Detenerse hasta la siguiente instrucción del promotor para comenzar F0**. Los parámetros pendientes conservan sus gates en [PLAN.md](./PLAN.md); producción requiere autorización adicional explícita.

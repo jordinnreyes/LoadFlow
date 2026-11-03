@@ -1,14 +1,16 @@
 # CargaWise — Plan de implementación
 
-Versión 1.0 · 3 de noviembre de 2026 · **Propuesto; implementación pendiente de aprobación**.
+Versión 1.1 · 3 de noviembre de 2026 · **Aprobado para ejecución**.
 
-Fuentes: [PRD-v6](./PRD-v6.md), [UX-FLOWS](./UX-FLOWS.md), [DESIGN-SYSTEM](./DESIGN-SYSTEM.md) y [ARCHITECTURE](./ARCHITECTURE.md). La arquitectura contiene alternativas, contratos, diagramas, modelo de datos y ADR D-01–D-17. Las tareas de este documento todavía no se han ejecutado. Publicar estos documentos en GitHub no aprueba el stack ni inicia F0.
+**Registro de aprobación:** el promotor y responsable del producto aprobó este plan y ARCHITECTURE como base de implementación el **3 de noviembre de 2026 (America/Lima)**. **Gate G0: Aprobado**. Esto aprueba la planificación y las direcciones técnicas registradas en ARCHITECTURE §13, no la realización o verificación de tareas/hitos. **No comenzar Fase 0 hasta la siguiente instrucción del promotor**.
+
+Fuentes: [PRD-v6](./PRD-v6.md), [UX-FLOWS](./UX-FLOWS.md), [DESIGN-SYSTEM](./DESIGN-SYSTEM.md) y [ARCHITECTURE](./ARCHITECTURE.md). Se conserva el stack aprobado: React/TypeScript/Vite, Fastify/Node/TypeScript, PostgreSQL/Supabase Auth/Storage, Drizzle, REST/OpenAPI, motor determinista y adaptador IA Premium. Capacitor es preferido para Android y queda sujeto a comprobación técnica. Las tareas de este documento todavía no se han ejecutado; no se autorizan en esta actualización recursos pagados, credenciales de producción ni despliegues.
 
 ## 1. Alcance, estados y dependencias
 
-Orden: **backend → integración del frontend existente → staging → autorización independiente de producción**. Preparar infraestructura local, contratos y pruebas desde F0. Conservar React/Vite/CSS, rutas, componentes y diseño responsive. No crear microservicios, aplicación nativa, pagos ni un nuevo frontend en estas fases.
+Orden: **backend → integración del frontend existente → staging → autorización independiente de producción**. Preparar infraestructura local, contratos y pruebas desde F0. Conservar React/Vite/CSS, rutas, componentes y diseño responsive. No crear microservicios, pagos ni un nuevo frontend. Android se limita al spike temprano F0-07 y a la comprobación posterior AM-01: no se autoriza aquí desarrollar la aplicación móvil completa ni ejecutarlos en esta actualización.
 
-El repositorio remoto solo contenía README al comenzar esta revisión. Este envío incorpora los seis Markdown solicitados; el código del prototipo permanece local. F0-01 deberá versionar ese código con sus pruebas antes de implementar cambios. Un clon de esta entrega documental no es todavía una aplicación ejecutable.
+La publicación documental anterior incorporó los seis Markdown solicitados; el código del prototipo permanece local. F0-01 deberá versionar ese código con sus pruebas antes de implementar cambios. Un clon de esa entrega documental no es todavía una aplicación ejecutable. Esta revisión modifica únicamente ARCHITECTURE.md y PLAN.md.
 
 | Estado | Evidencia necesaria |
 |---|---|
@@ -18,14 +20,19 @@ El repositorio remoto solo contenía README al comenzar esta revisión. Este env
 | Probado | Checks obligatorios ejecutados con resultados, entorno y comando registrados |
 | Aprobado | Revisión explícita del promotor para el hito/decisión; Codex no se autoaprueba |
 
-Prioridades: **P0** = seguridad, integridad o bloqueo de un flujo principal; **P1** = necesario para completar el MVP; **P2** = mejora acotada que puede diferirse sin declarar una cobertura inexistente. Todos los IDs F*-* están inicialmente **Pendiente**. Las rutas de archivos de las tablas son ubicaciones propuestas, no archivos creados en esta entrega.
+Prioridades: **P0** = seguridad, integridad o bloqueo de un flujo principal; **P1** = necesario para completar el MVP o una validación exigida antes de distribuir Android; **P2** = mejora acotada que puede diferirse sin declarar una cobertura inexistente. Todos los IDs F*-* y AM-01 están **Pendiente**, incluidos F0-07 y sus verificaciones. Las rutas de archivos de las tablas son ubicaciones futuras, no archivos creados en esta entrega.
 
 ```mermaid
 flowchart TD
-  G0[Arquitectura y políticas relevantes aprobadas] --> F0[F0 Preparación y contratos]
+  G0[G0 aprobado; inicio F0 espera siguiente instrucción] --> F0[F0 Preparación principal F0-01 a F0-06]
   F0 --> F1[F1 Backend base]
+  F0 -.-> A0[F0-07 Spike Android no bloqueante por entorno]
   F1 --> F2[F2 Disponibilidad y Calendar]
   F1 --> F3[F3 Importación]
+  F1 -.-> AM[AM-01 Integración Android posterior]
+  F2 -.-> AM
+  A0 -.-> AM
+  AM --> GA[Gate Android antes de distribución]
   F2 --> F4[F4 Motor y seguimiento Free]
   F3 --> F4
   F4 --> F5[F5 Premium y evaluación]
@@ -42,7 +49,7 @@ F2 y F3 pueden desarrollarse por separado después de F1; se integran antes de c
 
 Para cada tarea: implementación limitada al alcance; contratos y migraciones revisados; tipos/build y pruebas pertinentes pasan; autorización por propietario en toda lectura/escritura; errores y estados UI previstos; sin secretos, datos reales ni logs sensibles; documentación y riesgos actualizados; diff revisable con requisito y evidencia. No escribir pruebas que solo repitan el código: comprobar efectos, límites e invariantes. Si falta acceso a un proveedor o dispositivo, declarar la prueba pendiente y no reemplazarla por una afirmación de éxito.
 
-Una fase pasa a **Probado** solo al satisfacer todos sus criterios obligatorios más DoD-C. El hito pasa a **Aprobado** únicamente tras revisión. Una excepción de producto requiere decisión registrada en D-* o SUP-*, con impacto y nuevas pruebas, antes de afectar comportamiento.
+Una fase pasa a **Probado** solo al satisfacer todos sus criterios obligatorios más DoD-C. Excepción explícita de alcance: F0-07 puede continuar Pendiente por limitaciones del entorno sin bloquear la preparación principal F0-01–06, M0 ni F1; no se declara Android probado. El hito pasa a **Aprobado** únicamente tras revisión. Una excepción de producto requiere decisión registrada en D-* o SUP-*, con impacto y nuevas pruebas, antes de afectar comportamiento.
 
 ### 1.2 Catálogo de pruebas
 
@@ -58,12 +65,14 @@ Una fase pasa a **Probado** solo al satisfacer todos sus criterios obligatorios 
 | T08 | OpenAPI: validación request/response, cliente generado, errores estables, recursos de otro propietario y comandos obsoletos |
 | T09 | Playwright: suite demo conservada y suite real nueva; escritorio/móvil, teclado, estados, persistencia y dos contextos autenticados |
 | T10 | Staging: migración desde release anterior, smoke desplegado, restauración BD + objetos, rollback compatible, secretos y alertas |
+| T11 | Spike F0-07: APK de desarrollo, instalación/arranque, rutas y responsive del frontend reutilizado, HTTPS simulado/de pruebas; sin OAuth real; resultado por comprobación |
+| T12 | AM-01 después de F1/F2: Google Sign-In y autorización Calendar independientes en APK Android, retorno seguro, sesión persistida/revocada, disponibilidad y misma cuenta/datos web |
 
 Las 22 pruebas de reglas y 36 ejecuciones de interfaz del prototipo son una referencia histórica documentada en README. No demuestran funcionamiento de un backend todavía inexistente. En F0 se registra un baseline nuevo reproducible.
 
 ## 2. Fase 0 — Preparación y contratos
 
-**Objetivo:** convertir el código local existente en una base reproducible y preparar herramientas/backend local sin modificar la experiencia aprobada. **Dependencias:** aprobación de arquitectura D-01/02/03/06/12/13 y del alcance de la primera implementación. Sin esa aprobación no ejecutar estas tareas.
+**Objetivo:** convertir el código local existente en una base reproducible y preparar herramientas/backend local sin modificar la experiencia aprobada; comprobar temprano la viabilidad Android mediante spike acotado. **Dependencias:** G0 y direcciones D-01/02/03/06/12/13 aprobados por el promotor el 03/11/2026. El inicio efectivo espera su siguiente instrucción; las políticas específicas pendientes se resolverán antes de las funcionalidades afectadas, sin reabrir el stack.
 
 | Tarea / prioridad | Acción concreta | Dependencia | Archivos o módulos | PRD |
 |---|---|---|---|---|
@@ -73,16 +82,39 @@ Las 22 pruebas de reglas y 36 ejecuciones de interfaz del prototipo son una refe
 | F0-04 · P0 | Crear composición Fastify mínima y esquemas compartidos; definir OpenAPI de errores, auth, versiones, minutos, fechas/zonas y comandos; generar cliente sin conectar aún la UI | F0-02; D-13 | `server/app.ts`, `packages/contracts/`, `src/api/` generado | RF-01/25/27/28; RNF-05/12 |
 | F0-05 · P0 | Preparar runners de integración/contratos, BD efímera aislada, reloj fijo inyectable y CI build/tests sin proveedores reales | F0-03/04 | `tests/integration/`, `tests/contracts/`, `.github/workflows/` | RNF-04/05/08 |
 | F0-06 · P1 | Documentar ramas `codex/<tarea>`, commits pequeños, PR con requisito/evidencia, revisión de migraciones y estados de hitos; proteger secretos y separar despliegues manuales | F0-01/05 | README, workflow y reglas del repositorio | RNF-03/04/07 |
+| F0-07 · P1 | Spike técnico Android con Capacitor: reutilizar frontend, proyecto de prueba, APK debug, rutas/responsive/HTTPS de pruebas e investigación de Google/retorno seguro, sin autenticación Google real ni Calendar | F0-01/02; D-16 preferencia aprobada; instrucción de inicio F0 | `spikes/android-capacitor/`, configuración/build de prueba, informe T11 futuro | RF-19/25/27; RNF-08/12/14 |
 
-**Orden:** F0-01 → 02 → 03/04 → 05 → 06. No mover `src` a otra plataforma ni generar capas vacías. Workspaces solo para los paquetes compartidos que efectivamente se usen.
+**Orden principal:** F0-01 → 02 → 03/04 → 05 → 06. **Rama temprana:** después de F0-02, F0-07 puede comprobar Android sin esperar F1/F2 ni backend real. No mover `src` a otra plataforma ni generar capas vacías. Workspaces solo para los paquetes compartidos que efectivamente se usen.
 
-**Entregables:** baseline del prototipo versionado; instrucciones reproducibles; backend local mínimo, contrato versionado y CI de pruebas. **Tests obligatorios:** build y suite demo, T02 de conexión/roles/migración vacía, T08 de salud/error/JSON inválido. Documentar los comandos reales y fallos ambientales.
+**Entregables:** baseline del prototipo versionado; instrucciones reproducibles; backend local mínimo, contrato versionado y CI de pruebas; informe del spike o procedimiento local con verificaciones pendientes. **Tests obligatorios del camino principal:** build y suite demo, T02 de conexión/roles/migración vacía, T08 de salud/error/JSON inválido. T11 se registra aparte en F0-07, sin bloquear F1 por carencias del entorno. Documentar comandos reales y fallos ambientales.
 
 **Aceptación:** instalación limpia no exige secretos de producción; demo conserva rutas y estilos; dos bases de tests no se pisan; CI no contiene credenciales ni llama OpenAI/Google. **DoD:** DoD-C + arranque desde checkout limpio comprobado. **Riesgos:** Node observado está fuera de soporte; actualizaciones pueden afectar toolchain; Docker/recursos locales y runner Windows/Linux requieren instrucciones verificadas. **Hito:** M0 base reproducible.
 
+### 2.1 F0-07 — Spike técnico Android con Capacitor
+
+**Estado: Pendiente. Prioridad: P1 para validar viabilidad Android temprano; no bloqueante de F1 por limitaciones del entorno.** La tarea solo se ha añadido al plan: no se ha inventariado la toolchain Android, creado proyecto, compilado APK ni probado dispositivo en esta actualización.
+
+**Objetivo y dependencias:** comprobar que la UI React existente puede empaquetarse y comunicarse por HTTPS antes de invertir en toda la implementación. Depende de F0-01/02 y de la dirección D-16 aprobada; no requiere F0-03/04, credenciales Google, Calendar ni una API de negocio real. Herramientas necesarias para la ejecución: JDK y Android SDK compatibles con la versión Capacitor fijada, Gradle wrapper del proyecto generado y emulador o dispositivo compatible. Su compatibilidad y disponibilidad se investigan dentro de la tarea; no se presuponen instalados ni se fijan versiones sin verificarlas entonces.
+
+**Secuencia y procedimiento local futuro:**
+
+1. Inventariar Node/Capacitor, Java/JDK, Android Studio o herramientas SDK, plataforma/build tools, Gradle wrapper, `adb` y emulador/dispositivo. Registrar versiones, rutas, requisitos y faltantes; no usar credenciales o firma de producción.
+2. Reutilizar el build de React/Vite de la raíz; crear únicamente un contenedor de prueba en `spikes/android-capacitor/`, con configuración Android y assets generados desde ese build. No copiar ni bifurcar el código fuente de las pantallas. Fijar dependencias compatibles en lockfile y documentar el ciclo build → sincronización Capacitor → compilación Android.
+3. Documentar y ejecutar cuando sea posible los pasos de inicialización/adición/sincronización Android de Capacitor y el build Gradle `assembleDebug`. En Windows, usar el wrapper generado desde el directorio Android (`.\gradlew.bat assembleDebug`). Registrar comando, salida, versión, ubicación/hash del APK de desarrollo; generación del APK no demuestra instalación ni navegación.
+4. Instalar ese APK en emulador/dispositivo; registrar modelo/API de Android y resultado. Verificar arranque, rutas hash, navegación entre acceso/tablero/calendario/importación/ajustes y detalles disponibles, botón Atrás y reanudación; comprobar viewport, teclado y ausencia de pérdida de acciones. Los flujos siguen siendo simulados en este spike.
+5. Probar una petición/respuesta real HTTPS desde el APK a un endpoint controlado simulado o de pruebas, identificando URL/entorno, conectividad y resultado. Si es local, documentar cómo el dispositivo alcanza el host y confía en su certificado de desarrollo; `127.0.0.1` del dispositivo no se presume el host. No desactivar validación TLS ni habilitar HTTP inseguro global. No crear cloud pagado ni desplegar para esta prueba.
+6. Investigar opciones de Google Sign-In mediante SDK/plugin compatible y OAuth seguro del SO/proveedor; documentar audiencia, nonce/state/PKCE según flujo, asociación Android y retorno mediante enlaces verificados o mecanismo permitido. Registrar requisitos de configuración de pruebas y almacenamiento seguro; no implementar login Google real, solicitar tokens ni completar Calendar aquí.
+7. Entregar informe por comprobación: completada con evidencia, fallida con causa o pendiente de verificación; dependencias, incompatibilidades y pasos reproducibles locales. Si faltan SDK/Gradle/JDK/dispositivo, dejar las verificaciones afectadas pendientes. Documentar también pasos aún no ejecutados, sin presentar sus comandos como evidencia de éxito.
+
+**Archivos futuros:** contenedor/configuración Android del spike, script de reutilización del build y reporte T11; ajustes mínimos de configuración necesarios para empaquetar, sin reconstruir frontend ni alterar rutas, UX o reglas. **Entregables:** proyecto de prueba y APK debug solo si se logra generar; informe de compilación, instalación, navegación/HTTPS, investigación Google y limitaciones. Si no se genera, entregar procedimiento y bloqueo exacto, sin afirmar que existe APK probado.
+
+**Tests y aceptación:** T11 debe distinguir build, APK generado, instalación/arranque, rutas/responsive y HTTPS. Ninguna etapa implica aprobación automática de la siguiente. No llamar Google/OpenAI ni usar credenciales productivas. **DoD específico:** DoD-C y evidencias de cada resultado; para declarar la viabilidad verificada se necesitan compilación e instalación/recorridos/HTTPS exitosos. Un documento de instrucciones por falta de herramientas no pasa la tarea a Probado: permanece Pendiente en las comprobaciones no ejecutadas, con «pendiente de verificación» como nota.
+
+**Riesgos:** SDK/JDK/Gradle, recursos del emulador, comportamiento de WebView/teclado/Atrás, certificados/rutas desde dispositivo y soporte de plugins. Falta de herramientas no bloquea F0-01–06, M0 ni F1. Si aparece incompatibilidad técnica real, registrar impacto y decisión requerida antes de continuar la rama Android; no cambiar la arquitectura unilateralmente. **Hito Android A0:** viabilidad técnica temprana; Pendiente y separado de M0. Incluso aprobado, A0 no valida autenticación real, Calendar ni distribución Android: eso requiere AM-01 y la etapa móvil posterior.
+
 ## 3. Fase 1 — Backend base e identidad
 
-**Objetivo:** identidad real, aislamiento y CRUD académico, con dedicación real disponible para Free. **Dependencias:** F0 completo; D-05/06/12/13; políticas de sesión, correo y SUP-08 acordadas antes de implementar el comportamiento afectado.
+**Objetivo:** identidad real, aislamiento y CRUD académico, con dedicación real disponible para Free. **Dependencias:** camino principal F0-01–06 completo; F0-07 no bloquea F1 por limitaciones del entorno. D-06/12/13 aprobadas en dirección técnica y D-05 aceptada provisionalmente; políticas de sesión, correo y SUP-08 se acuerdan antes del comportamiento afectado. F1 no incluye desarrollar la app móvil completa.
 
 | Tarea / prioridad | Acción concreta | Dependencia | Archivos o módulos | PRD |
 |---|---|---|---|---|
@@ -117,6 +149,8 @@ Las 22 pruebas de reglas y 36 ejecuciones de interfaz del prototipo son una refe
 **Orden:** 01 → 02; 03 → 04; ambas ramas → 05 → 06. **Entregables:** API de disponibilidad, autorización Calendar de lectura, snapshots/estados y trabajos de refresh. **Tests:** T01/02/05/08 con intervalos solapados, DST, cambio de selección, respuesta parcial, HTTP 401/403/429/5xx, token revocado y refresh fuera de orden. Prueba real con cuenta de prueba y consentimiento antes de declarar integración verificada.
 
 **Aceptación:** capacidad = ventanas autorizadas menos unión ocupada; no se crean/modifican eventos Google; snapshot viejo no demuestra viabilidad actual; manual sin conexión funciona; un fallo conserva contexto y explica incertidumbre. **DoD:** DoD-C + auditoría de scopes/tokens/logs y cobertura de rangos. **Riesgos:** verificación OAuth, expiración de tokens en modo Testing, falta de información fuera del rango y costos/cuotas del proyecto Google. **Hito parcial:** disponibilidad real verificable.
+
+**Comprobación móvil posterior:** una vez disponibles las funcionalidades F1/F2, AM-01 (§14.2) validará identidad, Calendar y continuidad en APK. No añade construcción móvil al alcance de F1/F2 ni es un requisito para aprobar sus capacidades de backend; sí será necesaria antes de validar Android para distribución.
 
 ## 5. Fase 3 — Importación académica Free
 
@@ -237,29 +271,31 @@ Las 22 pruebas de reglas y 36 ejecuciones de interfaz del prototipo son una refe
 
 ## 11. Hitos, gates y decisiones pendientes
 
-| Hito | Salida verificable | Estado al redactar | Aprobación necesaria |
+| Hito | Salida verificable | Estado al 03/11/2026 | Aprobación / condición |
 |---|---|---|---|
-| G0 | Arquitectura, stack y alcance de arranque revisados | Pendiente | Promotor; antes de F0 |
-| M0 | Checkout reproducible, contrato y tests locales/CI | Pendiente | Revisión de F0 |
+| G0 | Arquitectura y plan aprobados como base; direcciones técnicas de arranque registradas | **Aprobado** | Promotor, 03/11/2026; inicio F0 reservado a su siguiente instrucción |
+| M0 | Checkout reproducible, contrato y tests locales/CI del camino F0-01–06 | Pendiente | Revisión de preparación principal; F0-07 pendiente por entorno no bloquea |
+| A0 | Spike F0-07: APK de desarrollo, rutas/responsive y HTTPS comprobados | Pendiente | Evidencia T11; no confundir con M0 o integración Google |
 | M1 | Identidad/datos/prioridades/progreso con aislamiento | Pendiente | Revisión de F1 y política de acceso |
 | M2 | Backend Free: importar, Calendar/manual, planificar/reajustar/registrar | Pendiente | F2–F4 probados y reglas aprobadas |
 | M3 | Premium evaluado y costo/consentimiento/control aprobados | Pendiente | F5 y criterios de habilitación |
 | M4 | Web existente integrada; flujos y visual responsive revisados | Pendiente | F6 y F7, sin afirmar validación nativa |
 | M5 | Staging probado, recuperación ensayada, presupuesto revisado | Pendiente | F8-01–06 |
 | G-PROD / M6 | Release específica autorizada y verificada | Pendiente | Nueva autorización explícita, antes de F8-07 |
+| G-ANDROID / A1 | AM-01 probada en APK y revisada; condición necesaria para validar Android para distribución | Pendiente | Evidencia T12 y revisión del promotor; no autoriza distribuir ni sustituye etapa móvil completa |
 
-| Decisión a aprobar | Propuesta / alternativa en ARCHITECTURE | Bloquea |
+| Decisión | Estado y alcance aprobado / pendiente | Condición de ejecución |
 |---|---|---|
-| D-02/03 | Fastify/Node 24 + Supabase PG/Auth/Storage + Drizzle | F0 |
-| D-05/06 | OTP dentro de interfaz y BFF; Google nativo futuro; aclarar si «sin navegador» excluye también autorización Google del SO | F1-02/03/04; futura app |
+| D-01/02/03/06/12/13 | Aprobadas en dirección técnica por el promotor el 03/11/2026: UI conservada, stack, BFF, versiones/idempotencia y UTC/zonas | No requieren nueva aprobación de stack para F0; inicio aún espera siguiente instrucción. Parámetros operativos no quedan aprobados |
+| D-05 | OTP dentro de interfaz y Google Sign-In aceptados provisionalmente; interfaces seguras SO/proveedor permitidas para OAuth; Calendar separado | F1-02/03/04: resolver expiración/intentos/SMTP y configuración de pruebas; implementación Android se verifica en AM-01 |
 | D-04; SUP-04 | Prioridades declaradas antes de ausentes; desempate estable | F4-02, no captura de actividad |
 | D-07; SUP-06 | Cobertura/freshness Calendar, reintentos y actualización segura vs confirmación | F2-03–06 y F4-05 |
 | D-08/15 | Límites de archivos/parseo, corpus y política de retirada/retención/eliminación | F3 con archivos de usuarios/piloto |
-| D-09/12/13 | Heurística/diagnóstico, versiones, horizonte/zona y hora faltante | F4; contratos base F0 |
+| D-09; SUP-01/02/05 | Motor determinista aprobado; límites de reparación, políticas de horizonte/zona/corte desconocido y diagnóstico requieren resolución/validación. D-12/13 ya aprobadas técnicamente | F4 y comportamiento afectado; no bloquean definir contratos base con tipos UTC/civiles en F0 |
 | SUP-08 | Cero esfuerzo, cierres/reapertura y efectos explícitos | F1-06/07 y F4-06 |
-| D-10/11/17 | Modelo/presupuesto, comparables/suficiencia, consentimiento y derechos Premium | F5 |
+| D-10/11/17 | Adaptador IA Premium aprobado; modelo/presupuesto, calibración/comparables/suficiencia, consentimiento y derechos de piloto continúan pendientes | F5; aviso API key F5-04 antes de primera llamada real |
 | D-14/15 | Cuentas, región, privacidad, presupuesto, backups y piloto | F8; ningún gasto por esta entrega |
-| D-16 | Capacitor futuro vs otro cliente; alcance de prueba nativa | Etapa móvil posterior, no construcción de esta web |
+| D-16 | Capacitor aprobado como opción preferida Android, viabilidad no verificada; alcance temprano F0-07 y posterior AM-01 registrados | F0-07 tras F0-01/02; AM-01 después de capacidades F1/F2; app completa/distribución fuera de esta aprobación |
 
 No cambiar una propuesta a «Aprobado» porque se implementó un valor por defecto. La aprobación puede ser por bloque de decisiones; registrar fecha, responsable y límites. Decisiones ajenas a la fase elegida no deben forzar permisos repetidos si ya existe autorización suficiente en la sesión.
 
@@ -271,7 +307,7 @@ No cambiar una propuesta a «Aprobado» porque se implementó un valor por defec
 4. Registrar archivos, comandos/resultados, limitaciones y RF/RNF atendidos. Marcar Implementado o Probado según evidencia, no ambos automáticamente. Actualizar documentación cuando una decisión cambie.
 5. Presentar diff/hito revisable y continuar tareas ya autorizadas. Solicitar únicamente decisiones faltantes que bloquean el comportamiento concreto. No avanzar por un gate pendiente ni crear gasto o producción implícitos.
 
-La infraestructura exacta, claves Google/SMTP y API key OpenAI se preparan cuando la tarea lo necesita, nunca como condición para leer o aprobar estos documentos. F5-04 es el aviso obligatorio antes de usar OpenAI real.
+La infraestructura exacta, claves Google/SMTP y API key OpenAI se preparan cuando la tarea lo necesita, nunca como condición para leer o aprobar estos documentos. F5-04 es el aviso obligatorio antes de usar OpenAI real. En esta actualización no se solicitan ni utilizan credenciales productivas, no se crean recursos pagados ni se despliega. Todos los hitos de implementación y pruebas siguen Pendiente; solo G0 y las aprobaciones de dirección técnica indicadas cambian de estado.
 
 ## 13. Trazabilidad PRD → tareas
 
@@ -301,9 +337,9 @@ La infraestructura exacta, claves Google/SMTP y API key OpenAI se preparan cuand
 | RF-22 | F1-06, F4-01/02/03/07 | T01/06/09 |
 | RF-23 | F3-01–06, F6-04 | T02/04/09/10 |
 | RF-24 | F1-07, F4-06, F5-05/06, F6-07 | T01/02/07/09 |
-| RF-25 | F1-01–05/08, F6-02 | T02/03/09 |
+| RF-25 | F1-01–05/08, F6-02, AM-01; F0-07 investiga mecanismos sin login real | T02/03/09/12 |
 | RF-26 | F4-08, F6-02/03/08 | T09 |
-| RF-27 | F1-01/04/08, F4-05, F6-01/07/09; app futura pendiente | T02/03/09; dispositivos en etapa posterior |
+| RF-27 | F1-01/04/08, F4-05, F6-01/07/09; F0-07 y AM-01 verifican alcance Android acotado; app completa futura pendiente | T02/03/09/11/12; aprobar spike no satisface continuidad completa |
 | RF-28 | F1-06, F3-05, F4-05/06/07/09, F6-06/07 | T02/04/06/09 |
 
 | No funcional | Implementación y validación |
@@ -315,19 +351,44 @@ La infraestructura exacta, claves Google/SMTP y API key OpenAI se preparan cuand
 | RNF-05 — Confiabilidad del análisis | F2-05, F4-03/05/08, F6-08, F7-05; fallo conserva anterior rotulado |
 | RNF-06 — Respuesta comprensible | F3-01/04, F4-05/08, F6-08/09; carga, término y fallo sin prometer latencia |
 | RNF-07 — Datos mínimos opcionales | F1-07, F2-01/02, F5-02/05, F7-04; sin obligación de Calendar/historial |
-| RNF-08 — Continuidad entre plataformas | F1-04/08, F4-05/09, F6-01/07/09; prueba nativa futura según §14 |
+| RNF-08 — Continuidad entre plataformas | F1-04/08, F4-05/09, F6-01/07/09, AM-01; app completa pendiente según §14 |
 | RNF-09 — Documentos no confiables | F3-01/04, F5-02/03, F7-04/05; contenido no cambia políticas/planes |
 | RNF-10 — Consistencia Premium | F5-02–06, F7-05; corpus, variación, versión y abstención |
 | RNF-11 — Privacidad Calendar | F2-03/04/05, F6-05, F7-04/05; ocupación autorizada, sin títulos/escritura |
-| RNF-12 — Coherencia multiplataforma | F6-03–09, F7-07; mismos campos y acciones responsive, app pendiente |
+| RNF-12 — Coherencia multiplataforma | F6-03–09, F7-07, F0-07/AM-01; mismos campos/acciones responsive, verificación Android y etapa móvil completa pendientes |
 | RNF-13 — Costos IA | F3, F4, F5-01/03/04/06, F7-05; Free no depende de IA y presupuesto controlado |
 | RNF-14 — Seguridad/aislamiento | F0-03, F1-01/04/08, F2-03, F5-01, F7-04; sesión y consentimientos separados |
 | RNF-15 — Primer uso | F6-02/03/05/08/09, F7-07; vacío, sin horas, desconexión y sobrecarga con texto |
 
 ## 14. App móvil futura y límite de esta entrega
 
-Estas fases construyen el backend común e integran la **web responsive** existente. No construyen un binario Android/iOS ni completan por sí solas la validación multiplataforma de RF-27. La propuesta Capacitor D-16 necesita una etapa posterior expresamente autorizada, sin cambiar las reglas del producto.
+### 14.1 Alcance aprobado y separación de comprobaciones
 
-Esa etapa deberá verificar en dispositivos: registro/código y login dentro de app sin alta previa web; SDK Google permitido por plataforma, sin WebView de OAuth; almacenamiento seguro del SO, retorno de enlaces y revocación; acceso a la misma cuenta/datos; sesiones y navegación; errores offline sin falsa sincronización. La autorización Calendar puede usar una interfaz segura del proveedor/SO: si el requisito exige que nunca se abra ninguna ventana externa, resolver esa restricción antes de prometer Google. No usar emulación de tamaño móvil como evidencia de app nativa.
+El camino principal construirá el backend común e integrará la **web responsive** existente. D-16 registra Capacitor como opción preferida Android. F0-07 añade un contenedor/APK de desarrollo de prueba; AM-01 añade una comprobación posterior de integración, ambas acotadas. No implican implementar toda la app móvil, crear iOS, completar RF-27 ni autorizar distribución. La etapa móvil completa conserva su aprobación posterior y no cambia reglas del producto.
 
-En esta ejecución se entregan exclusivamente documentos y su publicación Git solicitada. **Se detiene antes de F0, cualquier reestructuración, backend o despliegue.** La aprobación de arquitectura habilitará el arranque acordado; producción y gasto/credenciales conservarán sus gates concretos.
+El promotor acepta provisionalmente OTP dentro de la aplicación y Google Sign-In con permisos Calendar independientes. Permite interfaces seguras del SO/proveedor cuando OAuth lo requiera; esa aclaración queda resuelta, sin exigir registro previo en web. La implementación, plugins y seguridad deben verificarse, no inferirse de la aprobación. No usar emulación de tamaño móvil como evidencia de APK funcional.
+
+### 14.2 AM-01 — Prueba de integración Google Sign-In y Calendar en Android
+
+**Estado: Pendiente. Prioridad: P1; obligatoria antes de validar Android para distribución.** No se ejecuta en esta actualización ni como desarrollo de app completa en F1/F2.
+
+**Dependencias reales:** APK debug instalable y navegación base de F0-07/A0; identidad/sesión/datos de F1-02/03/04/05/08; consentimiento, lectura y estados Calendar de F2-03/04/05/06. La rama web deberá tener una interfaz de pruebas o cliente existente conectado al mismo backend para comprobar los datos comunes; si aún no existe, esa comprobación espera F6-01/02/03/05 correspondiente, sin declararla superada. Requiere endpoint HTTPS de pruebas alcanzable, plugin/SDK compatible, configuración OAuth de desarrollo y cuenta de prueba autorizada. No exige ni permite usar credenciales de producción; un entorno o permiso faltante se documenta como pendiente.
+
+**Objetivo:** probar integración real Android con esas capacidades ya disponibles. Archivos futuros: contenedor/harness de prueba de `spikes/android-capacitor/`, adaptadores mínimos de identidad/retorno/almacenamiento seguro y evidencia T12. Solo implementar lo necesario para esta comprobación cuando se indique su ejecución; no reconstruir pantallas ni completar todo el cliente móvil como dependencia artificial.
+
+**Secuencia y pruebas obligatorias T12:**
+
+1. En APK instalado, iniciar Google Sign-In mediante mecanismo permitido SDK/SO/proveedor; validar identidad/audiencia/nonce según el flujo y sesión del backend. Verificar cancelación/error y acceso desde app sin alta previa web. No utilizar WebView propia para OAuth.
+2. Después, autorizar Google Calendar de forma independiente con permiso mínimo y selección de calendarios. Rechazar Calendar debe conservar sesión CargaWise y modo manual; concederlo no permite escritura de eventos.
+3. Comprobar retorno seguro a CargaWise desde la interfaz autorizadora, estado/PKCE según flujo, destino permitido y ticket/enlace de un solo uso. Rechazar callback alterado, expirado o repetido, sin tokens en URLs/logs. Probar app en segundo plano y retorno/reapertura cuando aplique al mecanismo elegido.
+4. Reiniciar/reanudar APK y verificar persistencia/renovación segura de sesión. Probar cierre/revocación de sesión CargaWise y, por separado, revocación/desconexión Calendar: no exponer datos tras logout ni confundir Calendar revocado con pérdida obligatoria del login.
+5. Consultar disponibilidad del backend común: intervalos ocupados autorizados, ventanas y última actualización coherentes, sin títulos privados; errores/desactualización se informan. Comprobar que desconectar detiene nuevas consultas.
+6. Acceder desde web con la misma cuenta y verificar mismo identificador de usuario, cursos/actividad de prueba, disponibilidad y revisiones persistidas; un cambio confirmado en un cliente se recupera en el otro sin duplicación. Usar datos ficticios y no afirmar sincronización offline o instantánea.
+
+**Entregables y aceptación:** reporte por caso con versión/commit del APK/backend, dispositivo/API Android, configuración de pruebas sin secretos, comandos, resultado y evidencias. Todos los casos aplicables deben ejecutarse en APK, no solo navegador o mocks, para pasar AM-01 a Probado. Dependencias ambientales/configuración ausentes mantienen verificaciones Pendiente; un APK compilado o flujo simulado no prueba Google/Calendar. **DoD:** DoD-C + T12 y revisión del promotor para A1/G-ANDROID, sin acreditar los requisitos completos de distribución por esta prueba aislada.
+
+**Orden:** F0-07/A0 → capacidades F1/F2 disponibles → AM-01, añadiendo las conexiones web mínimas señaladas cuando estén listas. No bloquea el DoD backend de F1/F2 ni exige construir la app completa allí. **Riesgos:** plugin/SDK, certificados/firma de desarrollo, configuración OAuth, enlaces y ciclo de vida Android, tokens/almacenamiento y diferencias WebView/navegador. Resolver fallos antes de declarar experiencia Android validada para distribución; la distribución misma y el desarrollo móvil completo conservan autorización separada.
+
+### 14.3 Punto de detención de esta actualización
+
+Se actualizan **únicamente ARCHITECTURE.md y PLAN.md**. G0 está Aprobado por el promotor el 03/11/2026; F0-01–07, AM-01 y demás tareas/hitos de implementación y pruebas permanecen Pendiente. **Se detiene antes de F0 hasta la siguiente instrucción**, sin reestructuración, backend, proyecto Android, APK, credenciales productivas, recursos cloud pagados ni despliegues. Se conservan los gates operativos y de fases posteriores.
