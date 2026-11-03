@@ -2,7 +2,7 @@
 
 ## Estado del proyecto · 3 de noviembre de 2026
 
-El frontend sigue siendo una **web responsive de demostración**, con diseño/rutas preservados. Arquitectura y plan están aprobados; el promotor ha autorizado F0/F1. La preparación añade Fastify, contratos OpenAPI y Supabase local; la integración de la UI con el backend corresponde a F6. No hay despliegue productivo.
+El frontend sigue siendo una **web responsive de demostración**, con diseño/rutas preservados. Arquitectura y plan están aprobados; F0 se probó localmente y F1 implementa backend académico, sesiones y OTP real con Supabase local. Google real queda pendiente por indicación del promotor. La integración de la UI con el backend corresponde a F6. No hay despliegue productivo.
 
 El prototipo completo y sus pruebas quedaron versionados en el baseline `2e41ea7`, rama `codex/f0-f1-backend`. La configuración backend/local, instrucciones, seguridad y verificación se describen en [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md). El registro actual de ejecución está en [PLAN.md, §15](./PLAN.md#15-registro-de-ejecución--3-de-noviembre-de-2026). No se suben `.env`, dependencias, datos o artefactos locales.
 

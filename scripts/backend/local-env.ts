@@ -52,8 +52,6 @@ try {
     "revoke all on schema app from public, anon, authenticated",
   );
   await admin.query("grant usage on schema app to cw_runtime, cw_identity");
-  await admin.query("grant usage on schema auth to cw_migrator");
-  await admin.query("grant references on auth.users to cw_migrator");
   await admin.query("commit");
 } catch (error) {
   await admin.query("rollback");
@@ -89,4 +87,15 @@ writeFileSync(
 );
 console.log(
   "Roles locales separados y .env creado. Valores secretos omitidos.",
+);
+// Grant option on the provider-owned auth schema belongs to supabase_admin.
+execFileSync(
+  process.execPath,
+  [
+    "--env-file=.env",
+    "--import",
+    "tsx",
+    "scripts/backend/local-auth-grants.ts",
+  ],
+  { stdio: "inherit" },
 );

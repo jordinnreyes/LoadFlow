@@ -47,6 +47,12 @@ otp_expiry = 600
 [auth.email.template.magic_link]
 subject = "Código de acceso CargaWise (pruebas locales)"
 content_path = "./supabase/templates/otp.html"
+[auth.email.template.confirmation]
+subject = "Confirma tu cuenta CargaWise (pruebas locales)"
+content_path = "./supabase/templates/otp.html"
+[auth.rate_limit]
+# Fixture harness only: Mailpit captures all messages; never a product email quota.
+email_sent = 1000
 [edge_runtime]
 enabled = false
 [analytics]

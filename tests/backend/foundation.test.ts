@@ -58,6 +58,66 @@ test("invalid/extra fields and malformed JSON return safe errors without echoing
     });
     assert.equal(malformed.statusCode, 400);
     assert.equal(malformed.json().error.code, "MALFORMED_JSON");
+    const oversized = await app.inject({
+      method: "POST",
+      url: "/contract-probe",
+      headers: { "content-type": "application/json" },
+      payload: JSON.stringify({ minutes: 30, private: "x".repeat(70000) }),
+    });
+    assert.equal(oversized.statusCode, 413);
+    assert.equal(oversized.json().error.code, "PAYLOAD_TOO_LARGE");
+    const unsupported = await app.inject({
+      method: "POST",
+      url: "/contract-probe",
+      headers: { "content-type": "application/x-private" },
+      payload: "private-fixture",
+    });
+    assert.equal(unsupported.statusCode, 415);
+    assert.ok(!unsupported.body.includes("private-fixture"));
+  } finally {
+    await app.close();
+  }
+});
+test("OpenAPI describes private mutations, concurrency and idempotency without provider secrets", async () => {
+  const app = await buildApp();
+  try {
+    const result = await app.inject("/api/v1/openapi.json");
+    assert.equal(result.statusCode, 200);
+    const spec = result.json();
+    const headers = (path: string, method: string) =>
+      spec.paths[path][method].parameters
+        .filter((p: { in: string }) => p.in === "header")
+        .map((p: { name: string }) => p.name)
+        .sort();
+    assert.deepEqual(headers("/api/v1/activities/{id}/progress", "put"), [
+      "Idempotency-Key",
+      "If-Match",
+      "Origin",
+      "X-CSRF-Token",
+    ]);
+    assert.deepEqual(headers("/api/v1/activities", "post"), [
+      "Idempotency-Key",
+      "Origin",
+      "X-CSRF-Token",
+    ]);
+    assert.deepEqual(headers("/api/v1/auth/email/challenges", "post"), [
+      "Origin",
+    ]);
+    assert.deepEqual(headers("/api/v1/auth/session/refresh", "post"), [
+      "Origin",
+      "X-CSRF-Token",
+    ]);
+    assert.deepEqual(spec.paths["/api/v1/me"].get.security, [
+      { sessionCookie: [] },
+    ]);
+    const operations = Object.values(spec.paths).flatMap((path) =>
+      Object.values(path as Record<string, { operationId?: string }>)
+        .map((op) => op.operationId)
+        .filter(Boolean),
+    );
+    assert.equal(new Set(operations).size, operations.length);
+    assert.ok(!result.body.includes("CREDENTIAL_ENCRYPTION_KEY"));
+    assert.ok(operations.length >= 30);
   } finally {
     await app.close();
   }

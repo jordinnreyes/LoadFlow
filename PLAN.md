@@ -276,9 +276,9 @@ Las 22 pruebas de reglas y 36 ejecuciones de interfaz del prototipo son una refe
 | Hito | Salida verificable | Estado al 03/11/2026 | Aprobación / condición |
 |---|---|---|---|
 | G0 | Arquitectura y plan aprobados como base; direcciones técnicas de arranque registradas | **Aprobado** | Promotor, 03/11/2026; inicio F0 reservado a su siguiente instrucción |
-| M0 | Checkout reproducible, contrato y tests locales/CI del camino F0-01–06 | Pendiente | Revisión de preparación principal; F0-07 pendiente por entorno no bloquea |
+| M0 | Checkout reproducible, contrato y tests locales/CI del camino F0-01–06 | Probado | Revisión técnica F0 realizada; evidencia §15. Aprobación del promotor pendiente; continuación F1 autorizada por la solicitud de inicio. F0-07 no bloquea |
 | A0 | Spike F0-07: APK de desarrollo, rutas/responsive y HTTPS comprobados | Pendiente | Evidencia T11; no confundir con M0 o integración Google |
-| M1 | Identidad/datos/prioridades/progreso con aislamiento | Pendiente | Revisión de F1 y política de acceso |
+| M1 | Identidad/datos/prioridades/progreso con aislamiento | Implementado; alcance local probado | Evidencia §15; Google real y SMTP/políticas de piloto pendientes. Revisión del promotor pendiente; no Aprobado |
 | M2 | Backend Free: importar, Calendar/manual, planificar/reajustar/registrar | Pendiente | F2–F4 probados y reglas aprobadas |
 | M3 | Premium evaluado y costo/consentimiento/control aprobados | Pendiente | F5 y criterios de habilitación |
 | M4 | Web existente integrada; flujos y visual responsive revisados | Pendiente | F6 y F7, sin afirmar validación nativa |
@@ -289,12 +289,12 @@ Las 22 pruebas de reglas y 36 ejecuciones de interfaz del prototipo son una refe
 | Decisión | Estado y alcance aprobado / pendiente | Condición de ejecución |
 |---|---|---|
 | D-01/02/03/06/12/13 | Aprobadas en dirección técnica por el promotor el 03/11/2026: UI conservada, stack, BFF, versiones/idempotencia y UTC/zonas | No requieren nueva aprobación de stack para F0; inicio aún espera siguiente instrucción. Parámetros operativos no quedan aprobados |
-| D-05 | OTP dentro de interfaz y Google Sign-In aceptados provisionalmente; interfaces seguras SO/proveedor permitidas para OAuth; Calendar separado | F1-02/03/04: resolver expiración/intentos/SMTP y configuración de pruebas; implementación Android se verifica en AM-01 |
+| D-05 | OTP dentro de interfaz y Google Sign-In aceptados provisionalmente; interfaces seguras SO/proveedor permitidas para OAuth; Calendar separado. Parámetros de desarrollo/pruebas aprobados en §15 | SMTP, parámetros de piloto y OAuth real pendientes; el promotor autoriza continuar backend sin verificar Google real. Android se verifica en AM-01 |
 | D-04; SUP-04 | Prioridades declaradas antes de ausentes; desempate estable | F4-02, no captura de actividad |
 | D-07; SUP-06 | Cobertura/freshness Calendar, reintentos y actualización segura vs confirmación | F2-03–06 y F4-05 |
 | D-08/15 | Límites de archivos/parseo, corpus y política de retirada/retención/eliminación | F3 con archivos de usuarios/piloto |
 | D-09; SUP-01/02/05 | Motor determinista aprobado; límites de reparación, políticas de horizonte/zona/corte desconocido y diagnóstico requieren resolución/validación. D-12/13 ya aprobadas técnicamente | F4 y comportamiento afectado; no bloquean definir contratos base con tipos UTC/civiles en F0 |
-| SUP-08 | Cero esfuerzo, cierres/reapertura y efectos explícitos | F1-06/07 y F4-06 |
+| SUP-08 | Aprobado por el promotor en esta ejecución: cero pendiente de revisión, reapertura explícita con restante confirmado e historial preservado | Dato académico probado en F1-06/07; efecto sobre sesiones futuras se completa en F4-06 |
 | D-10/11/17 | Adaptador IA Premium aprobado; modelo/presupuesto, calibración/comparables/suficiencia, consentimiento y derechos de piloto continúan pendientes | F5; aviso API key F5-04 antes de primera llamada real |
 | D-14/15 | Cuentas, región, privacidad, presupuesto, backups y piloto | F8; ningún gasto por esta entrega |
 | D-16 | Capacitor aprobado como opción preferida Android, viabilidad no verificada; alcance temprano F0-07 y posterior AM-01 registrados | F0-07 tras F0-01/02; AM-01 después de capacidades F1/F2; app completa/distribución fuera de esta aprobación |
@@ -405,9 +405,29 @@ Este registro corresponde a la nueva autorización de F0/F1; §14.3 conserva el 
 | F0-02 | Probado | Node 24.22.2 local, npm 10.8.2 compatible; build/tipos y 22 reglas correctos; 36/36 E2E nuevamente con runtime 24. Instalación global sin cambios |
 | F0-03 | Probado | Supabase CLI 3 local aislado, PG 17/Auth/Storage/correo; roles separados, .env ignorado; migración Drizzle aplicada dos veces; 2 pruebas de integración reales correctas |
 | F0-04 | Probado | Fastify 5.12.8, TypeBox, OpenAPI 3.1 y tipos generados; salud/readiness, errores/validación estricta; tres pruebas backend correctas, sin conectar la UI |
-| F0-05 | En progreso | Tests locales y workflow Windows/Linux + DB efímera preparados; pendiente instalación reproducible desde checkout limpio. CI remota todavía no ejecutada |
+| F0-05 | Probado | Checkout limpio archivado de 747761e: npm ci (0 avisos), build/tipos/22 reglas/3 backend correctos; pruebas con BD real 2/2. Workflow Windows/Linux y BD efímera configurado; ejecución CI remota pendiente y no atribuida como éxito |
 | F0-06 | Probado | Rama/commits por tarea, plantilla PR, permisos CI mínimos y documentación en docs/DEVELOPMENT.md; secretos/builds excluidos; sin workflow de despliegue |
 | F0-07 | Pendiente | Proyecto Capacitor 8.6.0 generado/sincronizado con UI compartida; Gradle assembleDebug falla por falta de JAVA_HOME/java. Sin APK, dispositivo ni HTTPS Android verificados; procedimiento local en README del spike. No bloquea F1 |
-| F1-01–08 | Pendiente | Esperan preparación probada/revisada; no se declara M0/M1 Aprobado |
+| F1-01 | Probado | Migraciones 0001/0002 con tablas privadas, FK compuestas, RLS forzada e historial ordenado por revisión. Aplicadas desde F0 y desde base vacía/repetidas. Dos usuarios Auth: aislamiento SQL/servicio, roles mínimos, sin doble periodo, idempotencia y carrera 412. Referencias Auth concedidas solo al migrador local |
+| F1-02 | Probado en local | Tres pruebas reales Supabase Auth/Mailpit: alta OTP, login existente conserva onboarding/cursos, sesión privada, reuso rechazado, logout revoca refresh real, login sin alta accidental, cooldown y cinco intentos. SMTP y políticas de piloto pendientes; solo correo ficticio local |
+| F1-03 | Implementado | Adaptador Google/PKCE y retorno seguro, URL/scopes verificados con SDK; contrato con proveedor doble y protección de replay probados. Google real permanece pendiente por decisión expresa del promotor; sin OAuth de desarrollo ni cuenta real usados |
+| F1-04 | Probado en local | BFF con cookie HttpOnly/Secure, CSRF, tokens cifrados y renovación serializada; expiración, revocación y vínculo de sesión del proveedor probados. Transporte nativo definido para futura verificación, sin aceptar bearer arbitrario ni implementar app Android |
+| F1-05 | Probado | Perfil/preferencias, periodos y cursos privados con revisiones, paginación y zona declarada; cuenta nueva vacía y login existente sin duplicar periodo |
+| F1-06 | Probado en alcance implementado | Alta/consulta/edición de actividades y restricciones, estimación manual null/cero, prioridades base y excepciones, dependencias/ciclos, fecha vigente mediante propuesta confirmada e historial. Sin borrado destructivo ni política de eliminación inventada; sin planificador todavía |
+| F1-07 | Probado | Registro/corrección del total, restante y cierre antes del plazo; preparación y cumplimiento separados; reapertura explícita, historial estable y paginado. Retirada/revalidación de sesiones futuras corresponde a F4-06 |
+| F1-08 | Probado en local | 8 pruebas backend/contratos y 10 de integración correctas; PostgreSQL/Auth/correo reales, dobles identificados para Google y reloj/concurrencia. OpenAPI del dominio y tipos generados; revisión técnica de roles/RLS, CSRF, idempotencia y exposición de secretos. No acredita Google real, CI remoto ni seguridad de un piloto |
 
 **Decisiones expresas del promotor en esta ejecución:** configuración inicial solo desarrollo/pruebas: OTP 10 min, máximo 5 intentos por solicitud, reenvío tras 60 s; sesión web máximo 7 días y 24 h de inactividad. No habilita piloto ni fija cuotas comerciales. SUP-08 aprobado: estimación de 0 min conserva estado pendiente de revisión sin cerrar/programar; reapertura de preparación requiere acción explícita y confirmación del esfuerzo restante, preservando historial. Las políticas de privacidad, retención, piloto y fases posteriores siguen pendientes.
+
+**Revisión técnica M0:** frontend/PRD/UX/DS sin modificaciones respecto al baseline; fuentes, tests y lockfile versionados; esquema privado no expuesto en Data API; credenciales y roles separados; validación estricta/error seguro/readiness probados; contratos generados; nueva copia limpia ejecutada después de corregir la omisión inicial de tests del commit de preparación. El runner rechaza cero pruebas. Auditoría principal sin hallazgos; spike Android mantiene cuatro avisos moderados de herramientas y verificación pendiente, sin afectar runtime del backend. Se continúa F1 por autorización del promotor sin autoaprobar M0, sin push, cloud pagado ni despliegue.
+
+### Evidencia y límites de M1
+
+- Suite backend: 8/8. Salud/readiness, validación estricta, JSON malformado, límites de cuerpo, OpenAPI/encabezados, cifrado/CSRF, zonas/DST, null/cero y revisiones.
+- Integración: 10/10, sin omitidas. APIs académicas con dos propietarios; roles/contexto transaccional; Auth/Storage locales; tres recorridos OTP/correo reales; aislamiento/FK/historial/concurrencia; migración limpia y repetible; sesiones/PKCE con proveedor doble; URL Google/PKCE mediante SDK sin autenticar una cuenta Google.
+- `0001` y `0002` se aplicaron sobre el baseline F0. La prueba desde cero usa una **base efímera distinta**, en el contenedor propio, con `auth.users` como fixture mínimo de FK; se elimina únicamente esa base de prueba. El comportamiento del proveedor se prueba por separado contra Supabase Auth real.
+- El promotor eligió **continuar backend y dejar Google real pendiente**. No se usó cliente OAuth ni cuenta Google; Calendar no está implementado. El SDK delega validación de identidad a Supabase Auth mediante verificación remota; no se acepta un JWT meramente decodificado.
+- No se implementa borrado de datos/historial, retención, purga de idempotencia o credenciales ni SMTP de piloto mientras sigan pendientes sus políticas. `CRUD` en F1 cubre captura/lectura/corrección; eliminación destructiva permanece pendiente, sin endpoint que la finja. Antes de uso real se debe resolver ese alcance y probarlo.
+- `planningState: not_generated` es explícito: no hay disponibilidad real, motor ni sesiones persistidas hasta F2/F4. `needsReview` describe el esfuerzo, no certifica viabilidad ni integridad de todos los datos temporales. Grupos no reciben esfuerzo individual supuesto.
+- M1 permanece **sin aprobación del promotor** y no se declara totalmente verificada la identidad Google. F2 y fases posteriores no comenzaron. AM-01, APK, integración del frontend y piloto conservan sus comprobaciones/gates.
+- Cierre local: `npm run check` correcto (build/tipos, 22/22 reglas demo y 8/8 backend); `npm run test:integration` 10/10; contratos/tipos regenerados; auditoría npm principal 0 vulnerabilidades. HTTP contra proceso real: live/ready/OpenAPI 200, perfil anónimo 401, Google sin configurar 503; frontend existente 5173 responde 200. API disponible en 127.0.0.1:3001; no sirve UI ni está publicada.

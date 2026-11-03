@@ -1,5 +1,41 @@
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
+export async function assertApplicationRoles(
+  runtime: pg.Pool,
+  identity: pg.Pool,
+) {
+  for (const pool of [runtime, identity]) {
+    const role = (
+      await pool.query<{
+        rolsuper: boolean;
+        rolbypassrls: boolean;
+        can_create: boolean;
+      }>(
+        "select rolsuper,rolbypassrls,has_schema_privilege(current_user,'app','CREATE') as can_create from pg_roles where rolname=current_user",
+      )
+    ).rows[0];
+    if (!role || role.rolsuper || role.rolbypassrls || role.can_create)
+      throw new Error(
+        "La API requiere roles restringidos, distintos del migrador/administrador.",
+      );
+  }
+  const privateAccess = (
+    await runtime.query<{ allowed: boolean }>(
+      "select has_table_privilege(current_user,'app.client_sessions','SELECT') as allowed",
+    )
+  ).rows[0];
+  if (privateAccess.allowed)
+    throw new Error(
+      "El rol de negocio no debe resolver sesiones ni credenciales.",
+    );
+  const businessAccess = (
+    await identity.query<{ allowed: boolean }>(
+      "select has_table_privilege(current_user,'app.activities','SELECT') as allowed",
+    )
+  ).rows[0];
+  if (businessAccess.allowed)
+    throw new Error("El resolver de identidad no debe leer las actividades.");
+}
 export function database(connectionString: string) {
   const pool = new pg.Pool({
     connectionString,

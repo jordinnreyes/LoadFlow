@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { database, ownerTransaction } from "../../server/db/client.js";
+import {
+  database,
+  ownerTransaction,
+  assertApplicationRoles,
+} from "../../server/db/client.js";
 import { buildApp } from "../../server/app.js";
 if (!process.env.DATABASE_URL)
   throw new Error(
@@ -9,7 +13,10 @@ if (!process.env.DATABASE_URL)
   );
 test("real PostgreSQL uses restricted runtime and clears transaction-local owner", async () => {
   const db = database(process.env.DATABASE_URL!);
+  const identity = database(process.env.IDENTITY_DATABASE_URL!);
   try {
+    await assertApplicationRoles(db.pool, identity.pool);
+    await assert.rejects(assertApplicationRoles(identity.pool, db.pool));
     const role = (
       await db.pool.query(
         "select rolsuper, rolbypassrls, rolcreatedb, rolcreaterole from pg_roles where rolname=current_user",
@@ -53,6 +60,7 @@ test("real PostgreSQL uses restricted runtime and clears transaction-local owner
     }
   } finally {
     await db.pool.end();
+    await identity.pool.end();
   }
 });
 test("local Supabase Auth and Storage endpoints are reachable without a cloud account", async () => {

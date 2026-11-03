@@ -1,12 +1,25 @@
 import Fastify, { type FastifyError } from "fastify";
 import swagger from "@fastify/swagger";
 import cookie from "@fastify/cookie";
-import { ErrorResponse, Health, EmailChallenge, EmailVerification } from "../packages/contracts/index.js";
+import {
+  ErrorResponse,
+  Health,
+  EmailChallenge,
+  EmailVerification,
+} from "../packages/contracts/index.js";
 import { DomainError } from "./errors.js";
 import { assertRuntime } from "./config.js";
+import { identityRoutes } from "./modules/identity/routes.js";
+import type { Identity } from "./modules/identity/service.js";
+import { academicsRoutes } from "./modules/academics/routes.js";
+import { documentProtocol } from "./openapi.js";
 
 export async function buildApp(
-  options: { ready?: () => Promise<void>; logger?: boolean } = {},
+  options: {
+    ready?: () => Promise<void>;
+    logger?: boolean;
+    identity?: Identity;
+  } = {},
 ) {
   assertRuntime();
   const app = Fastify({
@@ -28,14 +41,21 @@ export async function buildApp(
   });
   await app.register(cookie);
   await app.register(swagger, {
+    transformObject: documentProtocol,
     openapi: {
       openapi: "3.1.0",
       info: { title: "CargaWise API", version: "0.1.0" },
       servers: [{ url: "/" }],
-      components: { securitySchemes: {
-        sessionCookie: { type: 'apiKey', in: 'cookie', name: '__Host-cw_session' },
-        mobileBearer: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-      } },
+      components: {
+        securitySchemes: {
+          sessionCookie: {
+            type: "apiKey",
+            in: "cookie",
+            name: "__Host-cw_session",
+          },
+          mobileBearer: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
+        },
+      },
     },
   });
   app.addSchema(EmailChallenge);
@@ -48,8 +68,8 @@ export async function buildApp(
       ? error.status
       : invalid
         ? 422
-        : error.statusCode === 400
-          ? 400
+        : [400, 413, 415, 429].includes(error.statusCode ?? 0)
+          ? error.statusCode!
           : 500;
     if (status === 500)
       request.log.error(
@@ -64,14 +84,26 @@ export async function buildApp(
             ? "VALIDATION_ERROR"
             : status === 400
               ? "MALFORMED_JSON"
-              : "INTERNAL_ERROR",
+              : status === 413
+                ? "PAYLOAD_TOO_LARGE"
+                : status === 415
+                  ? "UNSUPPORTED_MEDIA_TYPE"
+                  : status === 429
+                    ? "REQUEST_LIMITED"
+                    : "INTERNAL_ERROR",
         message: domain
           ? error.message
           : invalid
             ? "Revisa los campos indicados."
             : status === 400
               ? "El cuerpo JSON no es válido."
-              : "No pudimos completar la operación.",
+              : status === 413
+                ? "La solicitud supera el límite técnico permitido."
+                : status === 415
+                  ? "Envía un cuerpo JSON compatible."
+                  : status === 429
+                    ? "Espera antes de reintentar."
+                    : "No pudimos completar la operación.",
         fieldErrors: invalid
           ? error.validation!.map((v) => ({
               field: v.instancePath || "/",
@@ -84,17 +116,15 @@ export async function buildApp(
     });
   });
   app.setNotFoundHandler((request, reply) =>
-    reply
-      .status(404)
-      .send({
-        error: {
-          code: "NOT_FOUND",
-          message: "No encontramos este recurso.",
-          fieldErrors: [],
-          requestId: request.id,
-          retryable: false,
-        },
-      }),
+    reply.status(404).send({
+      error: {
+        code: "NOT_FOUND",
+        message: "No encontramos este recurso.",
+        fieldErrors: [],
+        requestId: request.id,
+        retryable: false,
+      },
+    }),
   );
   app.addHook("onSend", async (_request, reply) => {
     reply.header("Cache-Control", "no-store");
@@ -126,6 +156,20 @@ export async function buildApp(
       }
       return { status: "ok" as const };
     },
+  );
+  const getIdentity = () => {
+    if (!options.identity)
+      throw new DomainError(
+        503,
+        "AUTH_UNAVAILABLE",
+        "Configura la identidad local antes de usar la API.",
+      );
+    return options.identity;
+  };
+  await identityRoutes(app, getIdentity);
+  await academicsRoutes(app, getIdentity);
+  app.get("/api/v1/openapi.json", { schema: { hide: true } }, async () =>
+    app.swagger(),
   );
   return app;
 }
