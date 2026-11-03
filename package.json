@@ -13,8 +13,8 @@
     "format": "prettier --write src tests scripts vite.config.ts playwright.config.ts index.html README.md",
     "check:server": "tsc -p server/tsconfig.json",
     "dev:api": "node --env-file-if-exists=.env --import tsx server/start.ts",
-    "test:backend": "node --import tsx --test tests/backend/*.test.ts",
-    "test:integration": "node --env-file-if-exists=.env --import tsx --test --test-concurrency=1 tests/integration/*.test.ts",
+    "test:backend": "node scripts/backend/test.mjs backend",
+    "test:integration": "node --env-file-if-exists=.env scripts/backend/test.mjs integration",
     "contracts:export": "node --import tsx scripts/backend/contracts.ts",
     "contracts:types": "openapi-typescript packages/contracts/openapi.json -o packages/contracts/client.d.ts",
     "local:start": "node --import tsx scripts/backend/start-local.ts",
@@ -26,6 +26,7 @@
   "dependencies": {
     "@fastify/cookie": "11.1.5",
     "@fastify/swagger": "9.9.3",
+    "@js-temporal/polyfill": "0.5.1",
     "@sinclair/typebox": "0.34.52",
     "@supabase/supabase-js": "2.109.0",
     "drizzle-orm": "0.45.4",
