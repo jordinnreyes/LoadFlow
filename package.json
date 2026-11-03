@@ -10,21 +10,52 @@
     "test": "node --import tsx --test tests/rules.test.ts",
     "test:e2e": "node scripts/browser.mjs test",
     "setup:browser": "node scripts/browser.mjs install chromium",
-    "format": "prettier --write src tests scripts vite.config.ts playwright.config.ts index.html README.md"
+    "format": "prettier --write src tests scripts vite.config.ts playwright.config.ts index.html README.md",
+    "check:server": "tsc -p server/tsconfig.json",
+    "dev:api": "node --env-file-if-exists=.env --import tsx server/start.ts",
+    "test:backend": "node --import tsx --test tests/backend/*.test.ts",
+    "test:integration": "node --env-file-if-exists=.env --import tsx --test --test-concurrency=1 tests/integration/*.test.ts",
+    "contracts:export": "node --import tsx scripts/backend/contracts.ts",
+    "contracts:types": "openapi-typescript packages/contracts/openapi.json -o packages/contracts/client.d.ts",
+    "local:start": "node --import tsx scripts/backend/start-local.ts",
+    "local:status": "supabase status",
+    "check": "npm run build && npm run check:server && npm test && npm run test:backend",
+    "local:env": "node --import tsx scripts/backend/local-env.ts",
+    "db:migrate": "node --env-file-if-exists=.env --import tsx scripts/backend/migrate.ts"
   },
   "dependencies": {
+    "@fastify/cookie": "11.1.5",
+    "@fastify/swagger": "9.9.3",
+    "@sinclair/typebox": "0.34.52",
+    "@supabase/supabase-js": "2.109.0",
+    "drizzle-orm": "0.45.4",
+    "fastify": "5.12.8",
+    "jose": "6.2.15",
+    "pg": "8.23.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
     "@types/node": "^22.0.0",
+    "@types/pg": "8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "openapi-typescript": "7.13.0",
     "prettier": "^3.9.10",
+    "supabase": "3.0.0",
     "tsx": "^4.20.0",
     "typescript": "~5.9.3",
     "vite": "^6.4.1"
+  },
+  "engines": {
+    "node": ">=24.22.2 <25",
+    "npm": ">=10.8.2 <12"
+  },
+  "overrides": {
+    "@redocly/openapi-core": {
+      "minimatch": "11.0.4"
+    }
   }
 }

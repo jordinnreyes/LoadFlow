@@ -2,6 +2,8 @@
 
 Versión 1.1 · 3 de noviembre de 2026 · **Aprobado para ejecución**.
 
+**Inicio autorizado (03/11/2026):** el promotor ha indicado ejecutar F0 y continuar con F1 una vez probada y revisada técnicamente la preparación. El punto de detención documental anterior queda superado por esta instrucción. El registro de ejecución de §15 prevalece sobre las descripciones históricas de tareas aún no iniciadas; ningún hito se autoaprueba. Se conserva el stack, frontend, PRD y gates de fases posteriores.
+
 **Registro de aprobación:** el promotor y responsable del producto aprobó este plan y ARCHITECTURE como base de implementación el **3 de noviembre de 2026 (America/Lima)**. **Gate G0: Aprobado**. Esto aprueba la planificación y las direcciones técnicas registradas en ARCHITECTURE §13, no la realización o verificación de tareas/hitos. **No comenzar Fase 0 hasta la siguiente instrucción del promotor**.
 
 Fuentes: [PRD-v6](./PRD-v6.md), [UX-FLOWS](./UX-FLOWS.md), [DESIGN-SYSTEM](./DESIGN-SYSTEM.md) y [ARCHITECTURE](./ARCHITECTURE.md). Se conserva el stack aprobado: React/TypeScript/Vite, Fastify/Node/TypeScript, PostgreSQL/Supabase Auth/Storage, Drizzle, REST/OpenAPI, motor determinista y adaptador IA Premium. Capacitor es preferido para Android y queda sujeto a comprobación técnica. Las tareas de este documento todavía no se han ejecutado; no se autorizan en esta actualización recursos pagados, credenciales de producción ni despliegues.
@@ -392,3 +394,20 @@ El promotor acepta provisionalmente OTP dentro de la aplicación y Google Sign-I
 ### 14.3 Punto de detención de esta actualización
 
 Se actualizan **únicamente ARCHITECTURE.md y PLAN.md**. G0 está Aprobado por el promotor el 03/11/2026; F0-01–07, AM-01 y demás tareas/hitos de implementación y pruebas permanecen Pendiente. **Se detiene antes de F0 hasta la siguiente instrucción**, sin reestructuración, backend, proyecto Android, APK, credenciales productivas, recursos cloud pagados ni despliegues. Se conservan los gates operativos y de fases posteriores.
+
+## 15. Registro de ejecución · 3 de noviembre de 2026
+
+Este registro corresponde a la nueva autorización de F0/F1; §14.3 conserva el límite de la actualización documental anterior. Rama de trabajo: `codex/f0-f1-backend`.
+
+| Tarea | Estado | Evidencia / pendiente |
+|---|---|---|
+| F0-01 | Probado | Baseline local `2e41ea7`: frontend, pruebas y documentos aprobados preservados sin reescritura. `npm test`: 22/22; build correcto; Playwright escritorio/móvil: 36/36. No push ni despliegue |
+| F0-02 | Probado | Node 24.22.2 local, npm 10.8.2 compatible; build/tipos y 22 reglas correctos; 36/36 E2E nuevamente con runtime 24. Instalación global sin cambios |
+| F0-03 | Probado | Supabase CLI 3 local aislado, PG 17/Auth/Storage/correo; roles separados, .env ignorado; migración Drizzle aplicada dos veces; 2 pruebas de integración reales correctas |
+| F0-04 | Probado | Fastify 5.12.8, TypeBox, OpenAPI 3.1 y tipos generados; salud/readiness, errores/validación estricta; tres pruebas backend correctas, sin conectar la UI |
+| F0-05 | En progreso | Tests locales y workflow Windows/Linux + DB efímera preparados; pendiente instalación reproducible desde checkout limpio. CI remota todavía no ejecutada |
+| F0-06 | Probado | Rama/commits por tarea, plantilla PR, permisos CI mínimos y documentación en docs/DEVELOPMENT.md; secretos/builds excluidos; sin workflow de despliegue |
+| F0-07 | Pendiente | Proyecto Capacitor 8.6.0 generado/sincronizado con UI compartida; Gradle assembleDebug falla por falta de JAVA_HOME/java. Sin APK, dispositivo ni HTTPS Android verificados; procedimiento local en README del spike. No bloquea F1 |
+| F1-01–08 | Pendiente | Esperan preparación probada/revisada; no se declara M0/M1 Aprobado |
+
+**Decisiones expresas del promotor en esta ejecución:** configuración inicial solo desarrollo/pruebas: OTP 10 min, máximo 5 intentos por solicitud, reenvío tras 60 s; sesión web máximo 7 días y 24 h de inactividad. No habilita piloto ni fija cuotas comerciales. SUP-08 aprobado: estimación de 0 min conserva estado pendiente de revisión sin cerrar/programar; reapertura de preparación requiere acción explícita y confirmación del esfuerzo restante, preservando historial. Las políticas de privacidad, retención, piloto y fases posteriores siguen pendientes.

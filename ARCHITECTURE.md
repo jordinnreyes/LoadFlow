@@ -2,6 +2,8 @@
 
 Versión 1.1 · 3 de noviembre de 2026 · **Aprobado para implementación**.
 
+**Registro de inicio (03/11/2026):** una instrucción posterior del promotor autoriza F0 y F1 tras preparación probada y revisada; supera el límite documental de la aprobación original, sin cambiar el stack. El estado actual de ejecución se mantiene en PLAN §15. Se aceptan solo para desarrollo/pruebas OTP 10 min/5 intentos/reenvío 60 s y sesión web 7 días/24 h de inactividad. SUP-08 queda aprobado para cero pendiente de revisión y reapertura explícita con restante confirmado e historial. Las referencias siguientes a parámetros pendientes se mantienen para piloto/producción o para políticas aún no resueltas; esta autorización no aprueba pruebas, hitos ni despliegues.
+
 **Registro de aprobación:** el promotor y responsable del producto aprobó este documento y [PLAN.md](./PLAN.md) como base de implementación el **3 de noviembre de 2026 (America/Lima)**. Gate **G0: Aprobado**. Se aprueban las direcciones técnicas D-01/02/03/06/12/13; D-05 queda aceptada provisionalmente. Esta aprobación no acredita implementación, pruebas ni hitos de entrega y no incluye los parámetros operativos o políticas expresamente pendientes en §13.
 
 El stack aprobado conserva React + TypeScript + Vite y CSS del frontend; Fastify + Node.js + TypeScript; PostgreSQL + Supabase Auth/Storage; Drizzle; REST con OpenAPI; motor determinista; IA Premium mediante adaptador de proveedor. Capacitor es la opción preferida para Android, pendiente de comprobación técnica. Las alternativas documentadas se conservan como fundamento de la decisión, sin reabrir la selección tecnológica.

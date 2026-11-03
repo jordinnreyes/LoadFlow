@@ -1,0 +1,11 @@
+import { fileURLToPath } from 'node:url';
+import { resolve, dirname } from 'node:path';
+import { cpSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+const spike = dirname(fileURLToPath(import.meta.url));
+const root = resolve(spike, '../..');
+if (process.versions.node.split('.')[0] !== '24') throw new Error('Use Node 24');
+execFileSync(process.execPath, [resolve(root,'node_modules/typescript/bin/tsc'), '-b'], { cwd: root, stdio: 'inherit' });
+execFileSync(process.execPath, [resolve(root,'node_modules/vite/bin/vite.js'), 'build'], { cwd: root, stdio: 'inherit' });
+cpSync(resolve(root, 'dist'), resolve(spike, 'www'), { recursive: true });
+console.log('Assets del frontend existente copiados a www; sin bifurcar src.');

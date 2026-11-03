@@ -1,0 +1,48 @@
+name: CargaWise checks
+on:
+  pull_request:
+  push:
+    branches: [main, "codex/**"]
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run contracts:export
+      - run: npm run contracts:types
+      - run: git diff --exit-code -- packages/contracts
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run setup:browser
+      - run: npm run test:e2e
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run local:start
+      - run: npm run local:env
+      - run: npm run db:migrate
+      - run: npm run db:migrate
+      - run: npm run test:integration
+      - name: Stop only this ephemeral local test stack
+        if: always()
+        run: npx supabase stop --project-id cargawise-f0
