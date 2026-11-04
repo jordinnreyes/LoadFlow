@@ -1,4 +1,6 @@
-# Desarrollo CargaWise · F0/F1
+# Desarrollo CargaWise · F0/F1/F2
+
+Continuación F2: [disponibilidad y Calendar](./F2-DEVELOPMENT.md). Los resultados F0/F1 que siguen son evidencia histórica; el estado actual de ejecución se registra en PLAN §16.
 
 Stack y gates: ARCHITECTURE.md / PLAN.md. La UI de `src/` conserva su modo demo; integrar API es F6. No se inicia producción ni se crean servicios cloud con estos pasos.
 

@@ -4,6 +4,9 @@ import { database, assertApplicationRoles } from "./db/client.js";
 import { SupabaseProvider } from "./modules/identity/provider.js";
 import { Identity } from "./modules/identity/service.js";
 import { Academics } from "./modules/academics/service.js";
+import { CalendarService } from "./modules/calendar/service.js";
+import { GoogleCalendarProvider } from "./modules/calendar/provider.js";
+import { CalendarWorker } from "./modules/jobs/calendar-worker.js";
 const config = runtimeConfig();
 if (!config.databaseUrl)
   throw new Error("Falta DATABASE_URL. Consulta .env.example y README.");
@@ -41,14 +44,31 @@ const identity = new Identity(
     googleEnabled: process.env.GOOGLE_AUTH_ENABLED === "true",
   },
 );
+const calendar = new CalendarService(
+  identity,
+  process.env.CALENDAR_CLIENT_ID && process.env.CALENDAR_CLIENT_SECRET
+    ? new GoogleCalendarProvider({
+        clientId: process.env.CALENDAR_CLIENT_ID,
+        clientSecret: process.env.CALENDAR_CLIENT_SECRET,
+        callback: new URL(
+          "/api/v1/calendar/callback",
+          config.origin,
+        ).toString(),
+      })
+    : undefined,
+);
+const worker = new CalendarWorker(calendar);
 const app = await buildApp({
   logger: true,
   identity,
+  calendar,
   ready: async () => {
     await db.pool.query("select 1");
   },
 });
+let stopWorker: () => Promise<void> = async () => {};
 app.addHook("onClose", async () => {
+  await stopWorker();
   await db.pool.end();
   await identityDb.pool.end();
 });
@@ -57,3 +77,9 @@ for (const signal of ["SIGINT", "SIGTERM"])
     void app.close();
   });
 await app.listen({ port: config.port, host: config.host });
+stopWorker = worker.start(() =>
+  app.log.error(
+    { code: "CALENDAR_WORKER_FAILED" },
+    "Calendar queue could not advance",
+  ),
+);

@@ -17,11 +17,13 @@ export const documentProtocol: SwaggerTransformObject = (document) => {
       )
         headers.push("X-CSRF-Token");
       if (!auth) {
-        headers.push("Idempotency-Key");
+        if (path !== "/api/v1/calendar/authorization")
+          headers.push("Idempotency-Key");
         if (
           method !== "post" ||
           path.endsWith("/date-change-proposals") ||
-          path.endsWith("/apply")
+          path.endsWith("/apply") ||
+          path.endsWith("/availability/copy")
         )
           headers.push("If-Match");
       }

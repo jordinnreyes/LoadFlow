@@ -34,7 +34,7 @@ import type {
   ActivityDto,
 } from "../../../packages/contracts/academics.js";
 
-type Context = { db: NodePgDatabase; owner: string };
+export type Context = { db: NodePgDatabase; owner: string };
 type Result = { status: number; data: unknown; etag?: string };
 type Page = { cursor?: string; limit?: string };
 const stable = (v: unknown): string =>
