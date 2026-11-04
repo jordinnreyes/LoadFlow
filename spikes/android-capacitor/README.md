@@ -30,3 +30,48 @@ Registrar aquí únicamente comandos efectivamente ejecutados. Compilación APK,
 03/11/2026: dependencias Capacitor 8.6.0 instaladas de forma aislada; `prepare-web.mjs` compiló/copia el frontend compartido; `cap add android` y `cap sync android` finalizaron correctamente. `android/gradlew.bat assembleDebug` falló antes de compilar: `JAVA_HOME is not set and no 'java' command could be found in your PATH`. No existe APK verificado. No se realizaron instalación, navegación ni HTTPS en dispositivo. No se instaló un JDK/SDK global ni se atribuye éxito a las comprobaciones pendientes.
 
 Auditoría separada del spike: cuatro avisos moderados en la cadena de herramientas CLI (`glob`/`minimatch`/`rimraf`), sin hallazgos altos/críticos en esa consulta. No pertenecen al backend de ejecución; requieren revisión/actualización compatible y repetición de auditoría antes de validar o distribuir Android. No se aplicó `audit fix --force` ni se cambió Capacitor por otra plataforma.
+
+## Continuación · 4 de noviembre de 2026
+
+El promotor instaló la toolchain y eligió un Samsung A54 5G. Al no disponer de USB y no conectar aún el teléfono, indicó expresamente **por ahora solo preparar el APK**. No se emparejó ningún dispositivo ni se realizaron instalación, navegación o HTTPS desde Android. La depuración inalámbrica permite una comprobación posterior sin cable en Android 11 o superior, en la misma red y con emparejamiento autorizado: [procedimiento oficial](https://developer.android.com/studio/run/device).
+
+Entorno localizado en este equipo: Microsoft JDK 21.0.13.0.2 en `C:\Users\Jordinn\.jdks\ms-21.0.13.0.2`; SDK en `C:\Users\Jordinn\AppData\Local\Android\Sdk`; plataforma 36, Build-Tools 36.0.0, platform-tools y emulator disponibles. Se usó Gradle wrapper 8.14.3 y AGP 8.13.0 del proyecto existente. AGP seleccionó e instaló adicionalmente Build-Tools 35.0.0 con licencia ya aceptada; esto no cambia compile/target SDK 36. JAVA_HOME/ANDROID_HOME se definen únicamente para el proceso de compilación, sin alterar la configuración global.
+
+Comandos reproducibles desde la raíz (ajustar las rutas de JDK/SDK en otro equipo):
+
+```powershell
+$env:JAVA_HOME = 'C:\Users\Jordinn\.jdks\ms-21.0.13.0.2'
+$env:ANDROID_HOME = 'C:\Users\Jordinn\AppData\Local\Android\Sdk'
+& ./scripts/dev.ps1 --prefix spikes/android-capacitor run web
+& ./scripts/dev.ps1 --prefix spikes/android-capacitor run sync
+& ./spikes/android-capacitor/android/gradlew.bat -p spikes/android-capacitor/android assembleDebug --console=plain
+```
+
+`cap sync android` debe ejecutarse desde la carpeta del spike, como hace el script npm con `--prefix`; ejecutarlo dentro de su subcarpeta `android` no encuentra la plataforma. No repetir `cap add` ni crear otro proyecto para resolver esa ruta.
+
+Auditoría del 04/11: 3 avisos moderados en herramientas (`glob`, `minimatch`, `rimraf`), cero altos/críticos. Diagnóstico local en `.local/android-audit-20261104.json`, no versionado. Se conserva su corrección compatible pendiente antes de validar/distribuir Android; no se modificaron las versiones npm durante la compilación. No se procesa contenido no confiable mediante esas herramientas en esta prueba local. El APK de desarrollo no equivale a un release ni cierra F0-07.
+
+### APK generado y verificado estáticamente
+
+`assembleDebug` terminó con **BUILD SUCCESSFUL**, 93 tareas ejecutadas en la primera compilación (7 min 21 s). La inspección encontró un bundle anterior sin uso; `prepare-web.mjs` ahora verifica la ruta absoluta y rechaza enlaces antes de limpiar exclusivamente el directorio generado www. Nuevo build web/sync y empaquetado Gradle correctos (12 s, 27 tareas ejecutadas/66 actualizadas).
+
+- Artefacto Gradle: `android/app/build/outputs/apk/debug/app-debug.apk`.
+- Copia final local: `.local/artifacts/CargaWise-spike-debug-2026-11-04-fca8c01727d3.apk` desde la raíz del repositorio, ignorada y no subida a Git.
+- Tamaño: **4.465.311 bytes**.
+- SHA-256: `fca8c01727d37c4c932b2b7ddc6808588c0ca2c3cdd199afc76bbaf14cbd31c6`.
+- Paquete `com.cargawise.spike`, versión 1.0/1, actividad `com.cargawise.spike.MainActivity`, mínimo API 24, compile/target API 36.
+- `apksigner verify --verbose`: correcto, firma de desarrollo APK v2. No es firma de distribución.
+- Inspección ZIP: los tres archivos de dist coinciden por SHA-256; solo un bundle JS; sin rutas de .env, node_modules, backend, .git, claves/keystores. Búsqueda de patrones JWT/API key en assets de texto sin coincidencias; no sustituye una auditoría exhaustiva. El frontend y sus rutas permanecen intactos.
+
+| Comprobación T11 | Resultado al 04/11/2026 |
+|---|---|
+| Reutilización del frontend y build web | Correcto |
+| Sincronización Capacitor Android | Correcto |
+| Generación de APK debug | Correcto |
+| Firma, metadatos y assets del artefacto | Correcto; inspección estática |
+| Instalación y arranque en Samsung A54 5G | Pendiente; teléfono sin conectar |
+| Rutas, Atrás, teclado, reanudación y responsive en APK | Pendiente |
+| Petición/respuesta HTTPS desde APK | Pendiente |
+| Identidad Google/Calendar en Android | Fuera de este spike; AM-01 pendiente |
+
+Solo se preparó el artefacto solicitado. Ni el esquema https de los assets de Capacitor ni un build exitoso demuestran comunicación HTTPS real desde el teléfono. La tarea F0-07/A0 continúa pendiente de sus verificaciones en dispositivo y de revisión del promotor.
