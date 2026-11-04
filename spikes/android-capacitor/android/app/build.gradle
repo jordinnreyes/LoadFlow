@@ -22,6 +22,17 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    // Optional F0 harness only; ordinary debug/release builds keep the original UI.
+    if (project.findProperty('cwHttpsProbe') == 'true') {
+        sourceSets {
+            debug {
+                manifest.srcFile 'src/httpsProbe/AndroidManifest.xml'
+                java.srcDir 'src/httpsProbe/java'
+                res.srcDir 'src/httpsProbe/res'
+                assets.srcDir 'src/httpsProbe/assets'
+            }
+        }
+    }
 }
 
 repositories {

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src __ORIGIN__; base-uri 'none'; form-action 'none'"
+    />
+    <title>CargaWise · Prueba HTTPS F0</title>
+    <style>
+      body {
+        margin: 0;
+        background: #f7f8fc;
+        color: #182844;
+        font:
+          17px/1.6 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 580px;
+        margin: 40px auto;
+        padding: 24px;
+      }
+      h1 {
+        font-size: 26px;
+        line-height: 1.25;
+      }
+      section {
+        background: #fff;
+        padding: 22px;
+        border: 1px solid #dce3ed;
+        border-radius: 18px;
+      }
+      button {
+        font: inherit;
+        background: #214d98;
+        color: white;
+        border: 0;
+        border-radius: 12px;
+        min-height: 48px;
+        padding: 12px 20px;
+        width: 100%;
+        margin: 20px 0;
+      }
+      button:disabled {
+        opacity: 0.6;
+      }
+      p {
+        overflow-wrap: anywhere;
+      }
+      .muted {
+        font-size: 14px;
+        color: #51637d;
+      }
+      #result {
+        font-weight: 600;
+      }
+      a {
+        color: #214d98;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="muted">CARGAWISE · COMPROBACIÓN TÉCNICA F0</p>
+      <h1>Conexión HTTPS desde este APK</h1>
+      <section>
+        <p>
+          Conecta el teléfono y la computadora a la misma Wi‑Fi. La computadora
+          debe mantener el servidor de prueba encendido.
+        </p>
+        <p class="muted" id="device"></p>
+        <button id="run" type="button">Probar HTTPS</button>
+        <p id="result" role="status" aria-live="polite">Prueba pendiente.</p>
+        <p id="detail" class="muted"></p>
+      </section>
+      <p class="muted">
+        Solo envía un identificador ficticio al endpoint local. No usa tu cuenta
+        Google ni datos académicos. Este control no forma parte del producto.
+      </p>
+      <p><a href="https://localhost/">Volver al prototipo</a></p>
+    </main>
+    <script>
+      const endpoint = __ENDPOINT_JSON__;
+      const nonce = __NONCE_JSON__;
+      const info = new URLSearchParams(location.search);
+      document.querySelector("#device").textContent =
+        "Dispositivo: " +
+        (info.get("model") || "sin identificar") +
+        " · Android API " +
+        (info.get("api") || "?");
+      document.querySelector("#run").onclick = async () => {
+        const button = document.querySelector("#run"),
+          result = document.querySelector("#result"),
+          detail = document.querySelector("#detail");
+        button.disabled = true;
+        result.textContent = "Comprobando conexión segura…";
+        detail.textContent = "";
+        try {
+          const response = await fetch(endpoint, {
+            credentials: "omit",
+            cache: "no-store",
+            signal: AbortSignal.timeout(12000),
+          });
+          const data = await response.json();
+          if (
+            !response.ok ||
+            data.probe !== "cargawise-f0" ||
+            data.nonce !== nonce ||
+            !data.requestId
+          )
+            throw Error("unexpected");
+          result.textContent = "HTTPS correcto · HTTP " + response.status;
+          detail.textContent =
+            "Petición verificada: " +
+            data.requestId +
+            " · " +
+            data.at +
+            ". Comparte este resultado para registrar la prueba.";
+        } catch {
+          result.textContent = "No se pudo verificar HTTPS.";
+          detail.textContent =
+            "Revisa que ambos equipos estén en la misma Wi‑Fi, el servidor siga encendido y el APK corresponda a la prueba vigente. No se ha marcado como exitosa.";
+        } finally {
+          button.disabled = false;
+        }
+      };
+    </script>
+  </body>
+</html>

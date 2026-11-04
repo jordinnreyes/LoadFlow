@@ -11,6 +11,8 @@ supabase/.temp/
 supabase/.branches/
 spikes/android-capacitor/android/.gradle/
 spikes/android-capacitor/android/.idea/
+spikes/android-capacitor/android/app/src/httpsProbe/assets/
+spikes/android-capacitor/android/app/src/httpsProbe/res/raw/
 spikes/android-capacitor/android/**/build/
 spikes/android-capacitor/android/local.properties
 spikes/android-capacitor/www/

@@ -69,9 +69,19 @@ Auditoría del 04/11: 3 avisos moderados en herramientas (`glob`, `minimatch`, `
 | Sincronización Capacitor Android | Correcto |
 | Generación de APK debug | Correcto |
 | Firma, metadatos y assets del artefacto | Correcto; inspección estática |
-| Instalación y arranque en Samsung A54 5G | Pendiente; teléfono sin conectar |
-| Rutas, Atrás, teclado, reanudación y responsive en APK | Pendiente |
+| Instalación y arranque en Samsung A54 5G | Correcto según prueba manual reportada por el promotor |
+| Navegación/flujo y presentación del prototipo en APK | Promotor reportó flujo correcto; sin instrumentación ADB |
 | Petición/respuesta HTTPS desde APK | Pendiente |
 | Identidad Google/Calendar en Android | Fuera de este spike; AM-01 pendiente |
 
 Solo se preparó el artefacto solicitado. Ni el esquema https de los assets de Capacitor ni un build exitoso demuestran comunicación HTTPS real desde el teléfono. La tarea F0-07/A0 continúa pendiente de sus verificaciones en dispositivo y de revisión del promotor.
+
+### Comprobaciones posteriores del 04/11
+
+El promotor instaló el APK normal y reportó correcto el flujo demo en su Samsung A54 5G. Google/correos con perfiles ficticios corresponden al prototipo: no prueban identidad móvil real ni continuidad backend. No se exige cable ni conexión a Android Studio para reportar esa prueba manual.
+
+Los avisos de herramientas anteriores quedaron **resueltos**: `npm audit fix --package-lock-only --ignore-scripts`, seguido de `npm ci --ignore-scripts`, terminó con **0 vulnerabilidades**. Actualizaciones compatibles: glob 14.0.3, minimatch 11.0.4 y rimraf 6.1.4; Capacitor sigue 8.6.0. `cap sync android` correcto tras la instalación. No se cambió el frontend.
+
+Para HTTPS se preparó una variante debug opcional con un acceso separado **CargaWise HTTPS F0**. Procedimiento y límites en [https-probe/README.md](./https-probe/README.md). APK local: `.local/artifacts/CargaWise-HTTPS-F0-2026-11-04-c56bb27eab3c.apk` desde la raíz, 4.756.193 bytes, SHA-256 `c56bb27eab3c011f2d4fe3f76db1189cf8a0eebd4ff6ed7bb8a2b1164389c3ad`; firma v2 verificada. Debug `assembleDebug -PcwHttpsProbe=true` correcto en 1 min 12 s. El manifest release se procesó y comprobó sin actividad ni configuración TLS de prueba, sin generar un release.
+
+El endpoint local pasó el smoke de PC (TLS con CA explícita, CORS y respuesta esperada; rechazo de certificado no confiable, identificador/origen/método inválidos y rutas de archivos). **La ejecución desde el APK en el Samsung sigue pendiente.** El helper no modifica navegación ni lógica de la aplicación normal, ni inicia sesión, Calendar o IA.
