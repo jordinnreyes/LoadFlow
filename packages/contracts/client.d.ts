@@ -1225,7 +1225,9 @@ export interface operations {
     };
     startGoogleSignIn: {
         parameters: {
-            query?: never;
+            query?: {
+                prompt?: "consent";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1259,6 +1261,7 @@ export interface operations {
             query?: {
                 code?: string;
                 error?: string;
+                error_code?: string;
                 error_description?: string;
             };
             header?: never;

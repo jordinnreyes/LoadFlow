@@ -19,6 +19,8 @@ import { buildApp } from "../../server/app.js";
 class ProviderFixture implements AuthProvider {
   refreshes = 0;
   verifications = 0;
+  exchanges = 0;
+  lastPrompt: "consent" | undefined;
   readonly providerSessionId = randomUUID();
   constructor(
     readonly id: string,
@@ -53,13 +55,15 @@ class ProviderFixture implements AuthProvider {
   async revoke() {
     return;
   }
-  async googleStart() {
+  async googleStart(_callback: string, prompt?: "consent") {
+    this.lastPrompt = prompt;
     return {
       url: "https://provider.invalid/authorize",
       storage: { verifier: "fixture-verifier" },
     };
   }
   async googleExchange(code: string, storage: Record<string, string>) {
+    this.exchanges++;
     if (code !== "fixture-code" || storage.verifier !== "fixture-verifier")
       throw new Error("Invalid fixture callback");
     return this.proof();
@@ -152,6 +156,38 @@ test("refresh is serialized, sessions expire, encrypted tokens stay private and 
     await assert.rejects(identity.authenticate(fresh.cookie), { status: 401 });
     const app = await buildApp({ identity });
     try {
+      const forced = await app.inject(
+        "/api/v1/auth/google/start?prompt=consent",
+      );
+      assert.equal(forced.statusCode, 302);
+      assert.equal(provider.lastPrompt, "consent");
+      const cancelCookie = String(forced.headers["set-cookie"]).split(";")[0];
+      const exchangeCount = provider.exchanges;
+      const cancelled = await app.inject({
+        url: "/api/v1/auth/google/callback?error=access_denied&error_code=provider_error&error_description=private_provider_text",
+        headers: { cookie: cancelCookie },
+      });
+      assert.equal(cancelled.statusCode, 401);
+      assert.equal(provider.exchanges, exchangeCount);
+      assert.ok(!cancelled.body.includes("private_provider_text"));
+      assert.ok(
+        !String(cancelled.headers["set-cookie"]).includes(SESSION_COOKIE + "="),
+      );
+      assert.equal(
+        (
+          await app.inject({
+            url: "/api/v1/auth/google/callback?code=fixture-code",
+            headers: { cookie: cancelCookie },
+          })
+        ).statusCode,
+        401,
+      );
+      assert.equal((await app.inject("/api/v1/auth/session")).statusCode, 401);
+      assert.equal(
+        (await app.inject("/api/v1/auth/google/start?prompt=invalid"))
+          .statusCode,
+        422,
+      );
       const httpStart = await app.inject("/api/v1/auth/google/start");
       assert.equal(httpStart.statusCode, 302);
       const oauthHeader = String(httpStart.headers["set-cookie"]);
@@ -232,4 +268,14 @@ test("Supabase Google URL requests identity scopes and produces server-side PKCE
   );
   assert.ok(!start.url.includes("calendar"));
   assert.ok(!start.url.includes("refresh_token"));
+  assert.equal(
+    url.searchParams.has("prompt"),
+    false,
+    "normal login keeps its existing behavior",
+  );
+  const consent = await provider.googleStart(
+    "http://127.0.0.1:3001/api/v1/auth/google/callback",
+    "consent",
+  );
+  assert.equal(new URL(consent.url).searchParams.get("prompt"), "consent");
 });

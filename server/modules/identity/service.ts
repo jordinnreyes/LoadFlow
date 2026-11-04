@@ -269,7 +269,7 @@ export class Identity {
       }
     }
   }
-  async googleStart() {
+  async googleStart(prompt?: "consent") {
     if (!this.config.googleEnabled)
       throw new DomainError(
         503,
@@ -278,6 +278,7 @@ export class Identity {
       );
     const { url, storage } = await this.provider.googleStart(
       `${this.config.origin}/api/v1/auth/google/callback`,
+      prompt,
     );
     const state = opaque();
     await this.pool.query(
@@ -292,14 +293,15 @@ export class Identity {
     return { url, state };
   }
   async googleCallback(state: string | undefined, code: string | undefined) {
-    if (!state || !/^[A-Za-z0-9_-]{43}$/.test(state) || !code) throw denied();
+    if (!state || !/^[A-Za-z0-9_-]{43}$/.test(state)) throw denied();
     const row = (
       await this.pool.query<{ verifier_ciphertext: string }>(
         "update app.oauth_transactions set consumed_at=$2 where state_hash=$1 and consumed_at is null and expires_at>$2 returning verifier_ciphertext",
         [hash(state), this.now()],
       )
     ).rows[0];
-    if (!row) throw denied();
+    // A provider denial consumes its transaction too, without issuing a session.
+    if (!row || !code) throw denied();
     return this.issue(
       await this.provider.googleExchange(
         code,

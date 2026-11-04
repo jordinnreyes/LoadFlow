@@ -18,6 +18,7 @@ export interface AuthProvider {
   revoke(accessToken: string): Promise<void>;
   googleStart(
     callback: string,
+    prompt?: "consent",
   ): Promise<{ url: string; storage: Record<string, string> }>;
   googleExchange(
     code: string,
@@ -148,7 +149,7 @@ export class SupabaseProvider implements AuthProvider {
       throw unavailable();
     }
   }
-  async googleStart(callback: string) {
+  async googleStart(callback: string, prompt?: "consent") {
     const storage: Record<string, string> = {};
     try {
       const { data, error } = await this.client(storage).auth.signInWithOAuth({
@@ -157,6 +158,7 @@ export class SupabaseProvider implements AuthProvider {
           redirectTo: callback,
           skipBrowserRedirect: true,
           scopes: "openid email profile",
+          ...(prompt ? { queryParams: { prompt } } : {}),
         },
       });
       if (error || !data.url) throw unavailable();

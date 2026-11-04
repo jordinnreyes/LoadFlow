@@ -164,17 +164,21 @@ export async function identityRoutes(
       return reply.code(204).send();
     },
   );
-  app.get(
+  app.get<{ Querystring: { prompt?: "consent" } }>(
     "/api/v1/auth/google/start",
     {
       schema: {
         operationId: "startGoogleSignIn",
+        querystring: Type.Object(
+          { prompt: Type.Optional(Type.Literal("consent")) },
+          strict,
+        ),
         response: { 503: ErrorResponse },
       },
     },
-    async (_request, reply) => {
+    async (request, reply) => {
       const identity = getIdentity();
-      const result = await identity.googleStart();
+      const result = await identity.googleStart(request.query.prompt);
       reply.setCookie(OAUTH_COOKIE, result.state, {
         ...cookieOptions,
         maxAge: 600,
@@ -183,7 +187,12 @@ export async function identityRoutes(
     },
   );
   app.get<{
-    Querystring: { code?: string; error?: string; error_description?: string };
+    Querystring: {
+      code?: string;
+      error?: string;
+      error_code?: string;
+      error_description?: string;
+    };
   }>(
     "/api/v1/auth/google/callback",
     {
@@ -193,6 +202,7 @@ export async function identityRoutes(
           {
             code: Type.Optional(Type.String({ minLength: 1, maxLength: 2048 })),
             error: Type.Optional(Type.String({ maxLength: 200 })),
+            error_code: Type.Optional(Type.String({ maxLength: 200 })),
             error_description: Type.Optional(Type.String({ maxLength: 1000 })),
           },
           strict,
