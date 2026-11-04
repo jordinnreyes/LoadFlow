@@ -1,8 +1,8 @@
 # CargaWise · Prototipo interactivo
 
-## Estado del proyecto · 3 de noviembre de 2026
+## Estado del proyecto · 4 de noviembre de 2026
 
-El frontend sigue siendo una **web responsive de demostración**, con diseño/rutas preservados. Arquitectura y plan están aprobados; F0 se probó localmente y F1 implementa backend académico, sesiones y OTP real con Supabase local. Google real queda pendiente por indicación del promotor. La integración de la UI con el backend corresponde a F6. No hay despliegue productivo.
+El frontend sigue siendo una **web responsive de demostración**, con diseño/rutas preservados. Arquitectura y plan están aprobados; F0 y F1 están **Probadas en el alcance de desarrollo/pruebas**, con revisión del promotor pendiente para aprobar sus hitos. CI Windows/Linux/base efímera correcto; backend académico, OTP/sesiones y Google web local comprobados; APK demo y HTTPS TLS 1.3 probados manualmente en Samsung SM-A546E/API 36 con evidencia correlacionada. La integración de la UI con el backend corresponde a F6. No hay despliegue productivo ni inicio de F2.
 
 El prototipo completo y sus pruebas quedaron versionados en el baseline `2e41ea7`, rama `codex/f0-f1-backend`. La configuración backend/local, instrucciones, seguridad y verificación se describen en [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md). El registro actual de ejecución está en [PLAN.md, §15](./PLAN.md#15-registro-de-ejecución--3-de-noviembre-de-2026). No se suben `.env`, dependencias, datos o artefactos locales.
 
@@ -16,7 +16,7 @@ El prototipo completo y sus pruebas quedaron versionados en el baseline `2e41ea7
 
 Stack aprobado: React/TypeScript/Vite/CSS y backend modular Fastify, PostgreSQL/Auth/Storage con Supabase y migraciones Drizzle. Se trabaja con contenedores locales aislados; no se han contratado servicios. Los costos orientativos y decisiones D-* permanecen en ARCHITECTURE, con sus políticas operativas pendientes.
 
-OTP por correo y Google Sign-In están aceptados provisionalmente, con Calendar independiente e interfaces seguras SO/proveedor permitidas. Los parámetros de acceso de desarrollo/pruebas y SUP-08 se aprobaron expresamente en esta ejecución; no habilitan piloto real. El spike Capacitor Android está en [spikes/android-capacitor](./spikes/android-capacitor/README.md); APK/Google/Calendar en dispositivo requieren evidencia propia. OpenAI no se usa en F0/F1; el aviso de key continúa en F5-04.
+OTP por correo y Google Sign-In están aceptados provisionalmente, con Calendar independiente e interfaces seguras SO/proveedor permitidas. Los parámetros de acceso de desarrollo/pruebas y SUP-08 se aprobaron expresamente; no habilitan piloto real. El spike Capacitor Android está en [spikes/android-capacitor](./spikes/android-capacitor/README.md); instalación/flujo demo/HTTPS ya comprobados, mientras Google/Calendar reales en Android siguen para AM-01. El endpoint HTTPS temporal se apagó tras la prueba. OpenAI no se usa en F0/F1; el aviso de key continúa en F5-04.
 
 Los límites y verificaciones del prototipo que aparecen abajo son históricos y se refieren al modo demo, que no consume el backend. La ejecución actual se limita a F0/F1 y al spike técnico acotado; no autoriza producción, pagos, Calendar completo ni IA.
 
