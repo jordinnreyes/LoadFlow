@@ -12,6 +12,9 @@ import { assertRuntime } from "./config.js";
 import { identityRoutes } from "./modules/identity/routes.js";
 import type { Identity } from "./modules/identity/service.js";
 import { academicsRoutes } from "./modules/academics/routes.js";
+import { availabilityRoutes } from "./modules/availability/routes.js";
+import { CalendarService } from "./modules/calendar/service.js";
+import { calendarRoutes } from "./modules/calendar/routes.js";
 import { documentProtocol } from "./openapi.js";
 
 export async function buildApp(
@@ -19,6 +22,7 @@ export async function buildApp(
     ready?: () => Promise<void>;
     logger?: boolean;
     identity?: Identity;
+    calendar?: CalendarService;
   } = {},
 ) {
   assertRuntime();
@@ -168,6 +172,10 @@ export async function buildApp(
   };
   await identityRoutes(app, getIdentity);
   await academicsRoutes(app, getIdentity);
+  const getCalendar = () =>
+    options.calendar ?? new CalendarService(getIdentity());
+  await availabilityRoutes(app, getIdentity, getCalendar);
+  await calendarRoutes(app, getIdentity, getCalendar);
   app.get("/api/v1/openapi.json", { schema: { hide: true } }, async () =>
     app.swagger(),
   );

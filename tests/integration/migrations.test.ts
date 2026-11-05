@@ -6,6 +6,7 @@ import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { loopback } from "../../server/config.js";
+import journal from "../../server/db/migrations/meta/_journal.json" with { type: "json" };
 
 test("reviewed Drizzle SQL migrates from empty PostgreSQL and is repeatable", async () => {
   assert.ok(
@@ -53,7 +54,7 @@ test("reviewed Drizzle SQL migrates from empty PostgreSQL and is repeatable", as
           "select count(*)::int as n from drizzle.__drizzle_migrations",
         )
       ).rows[0].n,
-      3,
+      journal.entries.length,
     );
     const tables = (
       await client.query(
@@ -71,7 +72,7 @@ test("reviewed Drizzle SQL migrates from empty PostgreSQL and is repeatable", as
           "select count(*)::int as n from drizzle.__drizzle_migrations",
         )
       ).rows[0].n,
-      3,
+      journal.entries.length,
     );
   } finally {
     await client.end();

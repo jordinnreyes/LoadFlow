@@ -22,6 +22,34 @@
       "when": 1793664002000,
       "tag": "0002_history_order",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793750400000,
+      "tag": "0003_availability",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793750401000,
+      "tag": "0004_calendar",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793750402000,
+      "tag": "0005_calendar_source_failures",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793750403000,
+      "tag": "0006_calendar_queue_partition",
+      "breakpoints": true
     }
   ]
 }
