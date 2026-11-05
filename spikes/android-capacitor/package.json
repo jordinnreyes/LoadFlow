@@ -1,0 +1,23 @@
+{
+  "name": "cargawise-android-spike",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "engines": {
+    "node": ">=24.22.2 <25"
+  },
+  "scripts": {
+    "web": "node prepare-web.mjs",
+    "sync": "cap sync android",
+    "open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/core": "8.6.0",
+    "loadflow-prototype": "file:../.."
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.0",
+    "typescript": "5.9.3"
+  }
+}

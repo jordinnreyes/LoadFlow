@@ -1,10 +1,10 @@
 # CargaWise · Prototipo interactivo
 
-## Estado del proyecto · 3 de noviembre de 2026
+## Estado del proyecto · 4 de noviembre de 2026
 
-El prototipo local sigue siendo una **web responsive de demostración**, sin backend ni autenticación real. Se han preparado la arquitectura y el plan para revisión; **todavía no están aprobados ni implementados**. No se ha creado una PWA, una aplicación nativa ni un despliegue productivo.
+El frontend sigue siendo una **web responsive de demostración**, con diseño/rutas preservados. Arquitectura y plan están aprobados; F0 y F1 están **Probadas en el alcance de desarrollo/pruebas**, con revisión del promotor pendiente para aprobar sus hitos. CI Windows/Linux/base efímera correcto; backend académico, OTP/sesiones y Google web local comprobados; APK demo y HTTPS TLS 1.3 probados manualmente en Samsung SM-A546E/API 36 con evidencia correlacionada. La integración de la UI con el backend corresponde a F6. No hay despliegue productivo ni inicio de F2.
 
-Esta publicación incorpora únicamente los seis documentos solicitados. El código del prototipo existe en el espacio de trabajo local y su incorporación al repositorio está prevista en F0-01, después de aprobar la arquitectura. **Un clon de esta revisión documental no contiene todavía el código necesario para ejecutar los comandos de la sección siguiente.** Las instrucciones y verificaciones de prototipo de este README corresponden a esa copia local y a las entregas anteriores.
+El prototipo completo y sus pruebas quedaron versionados en el baseline `2e41ea7`, rama `codex/f0-f1-backend`. La configuración backend/local, instrucciones, seguridad y verificación se describen en [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md). El registro actual de ejecución está en [PLAN.md, §15](./PLAN.md#15-registro-de-ejecución--3-de-noviembre-de-2026). No se suben `.env`, dependencias, datos o artefactos locales.
 
 | Documento | Uso |
 |---|---|
@@ -14,11 +14,11 @@ Esta publicación incorpora únicamente los seis documentos solicitados. El cód
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Diagnóstico, alternativas de stack, diagramas, seguridad, datos, API y costos propuestos |
 | [PLAN.md](./PLAN.md) | F0–F8: backend → integración de la UI existente → staging; producción con aprobación independiente |
 
-Propuesta pendiente: conservar React/TypeScript/Vite/CSS y añadir backend modular Fastify, PostgreSQL/Auth/Storage gestionados con Supabase y migraciones Drizzle. No se han instalado estas herramientas ni contratado servicios. Los costos, fuentes y decisiones D-* se encuentran en ARCHITECTURE.
+Stack aprobado: React/TypeScript/Vite/CSS y backend modular Fastify, PostgreSQL/Auth/Storage con Supabase y migraciones Drizzle. Se trabaja con contenedores locales aislados; no se han contratado servicios. Los costos orientativos y decisiones D-* permanecen en ARCHITECTURE, con sus políticas operativas pendientes.
 
-La futura app deberá permitir registro y acceso desde su propia interfaz, sin alta previa en navegador; el correo OTP es una propuesta por aprobar. Google tiene requisitos específicos para su interfaz de autorización segura. La web actual no prueba todavía ese flujo nativo. La API key de OpenAI solo será necesaria en F5-04, antes de las primeras pruebas reales y tras acordar tratamiento/presupuesto; no hace falta para revisar estos documentos ni usar el prototipo.
+OTP por correo y Google Sign-In están aceptados provisionalmente, con Calendar independiente e interfaces seguras SO/proveedor permitidas. Los parámetros de acceso de desarrollo/pruebas y SUP-08 se aprobaron expresamente; no habilitan piloto real. El spike Capacitor Android está en [spikes/android-capacitor](./spikes/android-capacitor/README.md); instalación/flujo demo/HTTPS ya comprobados, mientras Google/Calendar reales en Android siguen para AM-01. El endpoint HTTPS temporal se apagó tras la prueba. OpenAI no se usa en F0/F1; el aviso de key continúa en F5-04.
 
-Los límites de entregas anteriores que aparecen abajo son históricos. La solicitud actual autoriza arquitectura, plan y publicación documental; el trabajo se detiene antes de reestructurar o implementar el backend.
+Los límites y verificaciones del prototipo que aparecen abajo son históricos y se refieren al modo demo, que no consume el backend. La ejecución actual se limita a F0/F1 y al spike técnico acotado; no autoriza producción, pagos, Calendar completo ni IA.
 
 Aplicación responsive para revisar la experiencia de anticipación de sobrecarga estudiantil. Construida con React, TypeScript, Vite y CSS reutilizable a partir de PRD-v6, UX-FLOWS y DESIGN-SYSTEM.
 
@@ -26,7 +26,7 @@ Aplicación responsive para revisar la experiencia de anticipación de sobrecarg
 
 ## Ejecutar
 
-Entorno observado del prototipo: Node.js 20.17.0 y npm, con dependencias reproducidas por `package-lock.json` en la copia local. No es una recomendación de runtime productivo: Node 20 ya está fuera de soporte según el [calendario oficial](https://nodejs.org/en/about/previous-releases). Se propone verificar Node 24 LTS en F0, sin actualizar el equipo ni las dependencias en esta entrega documental.
+Usar Node **24.22.2** según `.node-version`/`.nvmrc`, npm 10.8.2 o 11 y el lockfile. La instalación global del equipo no se cambia; existe runtime portable ignorado en `.local/runtime`. En Windows, `& ./scripts/dev.ps1 run <script>` lo selecciona. La infraestructura local backend requiere Docker Linux; el frontend demo puede abrirse sin ella.
 
 ```sh
 npm ci

@@ -1,0 +1,20 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
+import { Secrets, opaque, hash } from "../../server/modules/identity/crypto.js";
+test("token encryption is authenticated and CSRF binds to the session cookie", () => {
+  const secrets = new Secrets(randomBytes(32).toString("hex"));
+  const cookie = opaque();
+  const payload = { value: "private-fixture" };
+  const encrypted = secrets.encrypt(payload);
+  assert.ok(!encrypted.includes(payload.value));
+  assert.deepEqual(secrets.decrypt(encrypted), payload);
+  const parts = encrypted.split(".");
+  parts[2] = Buffer.alloc(16).toString("base64url");
+  assert.throws(() => secrets.decrypt(parts.join(".")));
+  assert.ok(secrets.validCsrf(cookie, secrets.csrf(cookie)));
+  assert.ok(!secrets.validCsrf(opaque(), secrets.csrf(cookie)));
+  assert.ok(!secrets.validCsrf(cookie, "forged"));
+  assert.notEqual(hash(cookie), cookie);
+  assert.throws(() => new Secrets("not-a-key"));
+});
