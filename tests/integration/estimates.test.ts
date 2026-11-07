@@ -22,7 +22,7 @@ const success: ProviderResult = {
     status: "estimated",
     lowMinutes: 40,
     highMinutes: 80,
-    factors: [{ kind: "deliverables", evidence: "un archivo SQL" }],
+    factors: [{ kind: "deliverables", evidenceIndex: 2 }],
     missingContext: [],
   },
 };

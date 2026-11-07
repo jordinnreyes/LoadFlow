@@ -1,10 +1,17 @@
 import { randomBytes } from "node:crypto";
 import pg from "pg";
 import { sql } from "drizzle-orm";
+import type { Static } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 import { assertRuntime, loopback } from "../../server/config.js";
 import { runPremiumCommand } from "../../server/modules/entitlements/operator.js";
 import { consentVersion } from "../../server/modules/entitlements/service.js";
 import { OpenAIResponses } from "../../server/modules/estimates/provider.js";
+import {
+  evidenceSegments,
+  ProviderSuggestion,
+  validateSuggestion,
+} from "../../server/modules/estimates/prompt.js";
 import {
   Estimates,
   type EstimatePolicy,
@@ -14,6 +21,10 @@ import { fixture } from "../../tests/integration/fixture.js";
 
 assertRuntime();
 const command = process.argv[2];
+const caseId = process.argv[3];
+const cases = estimateCorpus.filter(
+  (item) => caseId === undefined || item.id === caseId,
+);
 const capMicros = 1000000n;
 const policy: EstimatePolicy = {
   environment: "development",
@@ -42,6 +53,8 @@ if (command === "--preview") {
   );
 } else if (command === "--run-approved") {
   try {
+    if (!cases.length || process.argv.length > 4)
+      throw new Error("Caso inválido.");
     await run();
   } catch {
     console.error(
@@ -73,11 +86,37 @@ async function run() {
     throw new Error("Configuración inválida.");
   }
   const now = new Date();
+  const provider = new OpenAIResponses(key);
   const f = await fixture(
     now,
     undefined,
     undefined,
-    (academics) => new Estimates(academics, new OpenAIResponses(key), policy),
+    (academics) =>
+      new Estimates(
+        academics,
+        {
+          async estimate(context, request) {
+            const response = await provider.estimate(context, request);
+            if (
+              response.kind === "settled" &&
+              !response.errorCode &&
+              !validateSuggestion(
+                response.output,
+                context.excerpt,
+                policy.maxMinutes,
+              )
+            ) {
+              console.log(
+                JSON.stringify({
+                  validation: diagnose(response.output, context.excerpt),
+                }),
+              );
+            }
+            return response;
+          },
+        },
+        policy,
+      ),
   );
   const operator = new pg.Client({ connectionString: migrationUrl });
   const audit = {
@@ -111,7 +150,7 @@ async function run() {
     });
     if (consent.statusCode !== 200 || period.statusCode !== 201)
       throw new Error("Fixture no disponible.");
-    for (const item of estimateCorpus) {
+    for (const item of cases) {
       const activity = await f.request(user, "POST", "/api/v1/activities", {
         periodId: period.json().id,
         type: item.activityType,
@@ -176,4 +215,17 @@ async function run() {
       await f.close();
     }
   }
+}
+
+function diagnose(output: unknown, excerpt: string) {
+  if (!Value.Check(ProviderSuggestion, output)) return { schema: false };
+  const data = output as Static<typeof ProviderSuggestion>;
+  return {
+    status: data.status,
+    lowMinutes: data.lowMinutes,
+    highMinutes: data.highMinutes,
+    factors: data.factors,
+    availableSegments: evidenceSegments(excerpt).length,
+    missingContext: data.missingContext,
+  };
 }

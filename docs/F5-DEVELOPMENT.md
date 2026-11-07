@@ -18,7 +18,7 @@ El comando `revoke ID_CUENTA OPERADOR MOTIVO` retira Premium. La estimación man
 
 `POST /api/v1/activities/{id}/estimates` recibe un fragmento académico revisado y la revisión de actividad. Verifica propietario, acceso y consentimiento, y registra una reserva antes de llamar al adaptador. Una repetición reutiliza el resultado o la solicitud en curso. La reserva y su conciliación comparten un bloqueo de base de datos para que dos cuentas no excedan el límite configurado. El registro distingue ambientes, mes UTC, moneda, tarifa, modelo, versión del prompt, tokens, reserva y consumo estimado en microdólares.
 
-El fragmento viaja en memoria dentro de la petición y queda separado de las instrucciones del sistema. La normalización y el filtro de correos, enlaces, números largos y claves reducen exposición obvia. La revisión humana del fragmento sigue siendo necesaria para identificar nombres u otros datos personales. Solo se persisten huella privada, factores tipados, rango y metadatos. Se comprueba que cada factor cite un fragmento real antes de descartar la cita. La API no acepta archivos en esta etapa. El flujo de análisis documental deberá usar la verificación de nueva subida documentada en F3.
+El fragmento viaja en memoria dentro de la petición y queda separado de las instrucciones del sistema. La normalización y el filtro de correos, enlaces, números largos y claves reducen exposición obvia. La revisión humana del fragmento sigue siendo necesaria para identificar nombres u otros datos personales. El servidor numera las oraciones y exige que cada factor señale un segmento existente. Solo se persisten huella privada, factores tipados, rango y metadatos. La API no acepta archivos en esta etapa. El flujo de análisis documental deberá usar la verificación de nueva subida documentada en F3.
 
 La espera HTTP está acotada y devuelve un recurso consultable mediante `GET /api/v1/estimates/{id}`. Una interrupción después del despacho conserva la reserva y bloquea repetir automáticamente esa misma solicitud. El operador puede conciliarla con `reconcile ID_ESTIMACION MICRODOLARES OPERADOR MOTIVO` tras verificar el consumo. Una respuesta con uso superior al techo se registra y bloquea nuevas solicitudes en ese ambiente durante el mes. El costo registrado con uso conocido se calcula conservadoramente con las tasas de la política y puede diferir del importe de la factura.
 
@@ -33,3 +33,16 @@ Usar un proyecto de desarrollo de OpenAI para CargaWise y la clave local `OPENAI
 ```
 
 Tras aprobación y configuración del secreto local, la evaluación se ejecuta con `--env-file=.env` y `--run-approved`. El script crea una cuenta local sintética y revoca su acceso al finalizar. Los casos envían solo tipo y fragmentos ficticios. La retención y el consentimiento de datos reales del piloto siguen pendientes de revisión. OpenAI puede retener registros de supervisión de abuso bajo sus controles de datos, incluso cuando se solicita `store: false`. [Guía oficial de claves](https://developers.openai.com/api/docs/guides/api-keys).
+
+## Resultado de la evaluación inicial
+
+El promotor autorizó hasta USD 1.50 y el evaluador conservó su tope interno de USD 1. Los primeros dos intentos del laboratorio SQL recibieron uso confirmado de OpenAI, pero la aplicación rechazó las referencias literales por no coincidir con el texto. El segundo intento confirmó la causa mediante metadatos de validación. La versión `effort-range-es-v2` reemplazó las citas de texto libre por índices de segmentos. La validación comprueba que los índices existan y que cada tipo de factor aparezca una sola vez. La relevancia de un segmento aún requiere revisión humana en una evaluación más amplia.
+
+| Caso sintético | Estado observado | Rango | Tokens entrada / salida |
+| --- | --- | --- | --- |
+| Laboratorio SQL | `estimated` | 30–60 min | 415 / 133 |
+| Informe corto | `estimated` | 60–120 min | 419 / 167 |
+| Enunciado insuficiente | `needs_context` | — | 394 / 109 |
+| Enunciado con instrucción ajena | `estimated` | 60–120 min | 423 / 188 |
+
+El registro local calculó USD 0.001424 para los cuatro casos finales y USD 0.000731 para los dos intentos iniciales. El total conservador de USD 0.002155 utiliza las tasas de la política de CargaWise y puede diferir del importe facturado por OpenAI. La evaluación inicial acredita la integración con `gpt-6-luna` y los estados esperados de este corpus sintético. Personalización, aceptación de sugerencias y uso con datos reales del piloto conservan sus requisitos propios.

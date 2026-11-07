@@ -1,5 +1,6 @@
 import {
   instructions,
+  evidenceSegments,
   ProviderSuggestion,
   type EstimateContext,
 } from "./prompt.js";
@@ -65,7 +66,15 @@ export class OpenAIResponses implements EstimateProvider {
             service_tier: "default",
             instructions,
             max_output_tokens: maxOutputTokens,
-            input: [{ role: "user", content: JSON.stringify(context) }],
+            input: [
+              {
+                role: "user",
+                content: JSON.stringify({
+                  activityType: context.activityType,
+                  segments: evidenceSegments(context.excerpt),
+                }),
+              },
+            ],
             tools: [],
             text: {
               format: {
