@@ -12,6 +12,7 @@ import type {
 import {
   adjustSuggestion,
   calibrationFor,
+  calibrationWarning,
   localCalibrationPolicy,
   type CalibrationSnapshot,
 } from "./calibration.js";
@@ -430,6 +431,7 @@ export class Estimates {
             calibration: {
               version: snapshot.version,
               comparableCount: snapshot.comparableCount,
+              warning: calibrationWarning(snapshot.comparableCount),
             },
           };
       }

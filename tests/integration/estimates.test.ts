@@ -474,10 +474,25 @@ test("confirmed suggestions preserve history and personalize only from comparabl
       );
     };
 
-    const first = await closed("Comparación uno", 120);
-    const second = await closed("Comparación dos", 120);
     const target = await create("Actividad por estimar", 60);
     assert.equal((await estimate(target)).origin, "base");
+    const first = await closed("Comparación uno", 120);
+    const oneComparable = await estimate(target);
+    assert.equal(oneComparable.origin, "personalized");
+    assert.equal(oneComparable.calibration.comparableCount, 1);
+    assert.match(
+      oneComparable.calibration.warning,
+      /una sola actividad similar terminada/,
+    );
+    assert.ok(oneComparable.suggestion.highMinutes > 80);
+    const second = await closed("Comparación dos", 120);
+    const twoComparables = await estimate(target);
+    assert.equal(twoComparables.origin, "personalized");
+    assert.equal(twoComparables.calibration.comparableCount, 2);
+    assert.match(
+      twoComparables.calibration.warning,
+      /dos actividades similares terminadas/,
+    );
     await closed("Comparación tres", 120);
     await closed("Duración conocida antes de sugerir", 300, true);
     await closed("Sin horas reales positivas", 0);
@@ -485,6 +500,7 @@ test("confirmed suggestions preserve history and personalize only from comparabl
     const personalized = await estimate(target);
     assert.equal(personalized.origin, "personalized");
     assert.equal(personalized.calibration.comparableCount, 3);
+    assert.equal(personalized.calibration.warning, null);
     assert.equal(personalized.suggestion.lowMinutes, 50);
     assert.equal(personalized.suggestion.highMinutes, 100);
     assert.equal((await estimate(target, "medium")).origin, "base");

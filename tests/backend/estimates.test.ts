@@ -115,10 +115,7 @@ test("semantic validation rejects fabricated evidence, inverted ranges and obvio
 
 test("calibration shrinks the median and discounts an extreme observation", () => {
   const sample = { low: 40, high: 80, actual: 72 };
-  assert.equal(
-    fitCalibration([sample, sample, { ...sample, actual: 0 }], 1),
-    null,
-  );
+  assert.equal(fitCalibration([{ ...sample, actual: 0 }], 1), null);
   const fitted = fitCalibration(
     [sample, sample, { ...sample, actual: 5000 }],
     2,

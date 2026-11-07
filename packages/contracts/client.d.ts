@@ -8170,6 +8170,7 @@ export interface operations {
                         calibration: {
                             version: string;
                             comparableCount: number;
+                            warning: string | null;
                         } | null;
                         /** Format: date-time */
                         createdAt: string;
@@ -8398,6 +8399,7 @@ export interface operations {
                         calibration: {
                             version: string;
                             comparableCount: number;
+                            warning: string | null;
                         } | null;
                         /** Format: date-time */
                         createdAt: string;

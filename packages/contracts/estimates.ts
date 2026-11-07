@@ -83,6 +83,7 @@ export const Estimate = Type.Object(
         {
           version: Type.String(),
           comparableCount: Type.Integer({ minimum: 1 }),
+          warning: NullableText,
         },
         strict,
       ),

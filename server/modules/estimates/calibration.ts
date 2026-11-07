@@ -8,8 +8,9 @@ import type {
 import { estimateConsent } from "../entitlements/service.js";
 
 export const localCalibrationPolicy = Object.freeze({
-  version: "local-d10-v1",
-  minimumSamples: 3,
+  version: "local-d10-v2",
+  minimumSamples: 1,
+  samplesWithoutWarning: 3,
   shrinkage: 5,
   lookbackDays: 180,
   maximumAdjustmentBps: 2500,
@@ -21,6 +22,14 @@ export type CalibrationSnapshot = {
   comparableCount: number;
   multiplierBps: number;
 };
+
+export function calibrationWarning(comparableCount: number) {
+  if (comparableCount >= localCalibrationPolicy.samplesWithoutWarning)
+    return null;
+  return comparableCount === 1
+    ? "Este ajuste se basa en una sola actividad similar terminada."
+    : "Este ajuste se basa en solo dos actividades similares terminadas.";
+}
 
 type Comparable = { low: number; high: number; actual: number };
 
