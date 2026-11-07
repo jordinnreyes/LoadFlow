@@ -44453,6 +44453,8 @@
                           "errorCode",
                           "errorMessage",
                           "originalAvailable",
+                          "originalDeletionPending",
+                          "analysisSource",
                           "reviewExpiresAt",
                           "manualEntryAvailable"
                         ],
@@ -44631,6 +44633,35 @@
                           },
                           "originalAvailable": {
                             "type": "boolean"
+                          },
+                          "originalDeletionPending": {
+                            "type": "boolean"
+                          },
+                          "analysisSource": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "state",
+                              "code",
+                              "message"
+                            ],
+                            "properties": {
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "reupload_required"
+                                ]
+                              },
+                              "code": {
+                                "type": "string",
+                                "enum": [
+                                  "DOCUMENT_REUPLOAD_REQUIRED"
+                                ]
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
                           },
                           "reviewExpiresAt": {
                             "anyOf": [
@@ -45433,6 +45464,8 @@
                     "errorCode",
                     "errorMessage",
                     "originalAvailable",
+                    "originalDeletionPending",
+                    "analysisSource",
                     "reviewExpiresAt",
                     "manualEntryAvailable"
                   ],
@@ -45611,6 +45644,35 @@
                     },
                     "originalAvailable": {
                       "type": "boolean"
+                    },
+                    "originalDeletionPending": {
+                      "type": "boolean"
+                    },
+                    "analysisSource": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "state",
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "reupload_required"
+                          ]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "DOCUMENT_REUPLOAD_REQUIRED"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "reviewExpiresAt": {
                       "anyOf": [

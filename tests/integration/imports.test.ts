@@ -137,6 +137,38 @@ test("F3 integrates private Storage, PostgreSQL drafts, confirmation, revisions 
     const reviewed = await f.request(a, "GET", path);
     assert.equal(reviewed.json().state, "review", reviewed.body);
     assert.equal(reviewed.json().originalAvailable, false);
+    assert.equal(reviewed.json().originalDeletionPending, false);
+    assert.equal(reviewed.json().reviewExpiresAt, null);
+    assert.equal(
+      reviewed.json().analysisSource.code,
+      "DOCUMENT_REUPLOAD_REQUIRED",
+    );
+    assert.match(
+      reviewed.json().analysisSource.message,
+      /vuelve a subir el mismo archivo/,
+    );
+    await assert.rejects(storage.get(one.documentId));
+    await assert.rejects(
+      service.requireAnalysisReupload(a.owner, one.documentId),
+      { code: "DOCUMENT_REUPLOAD_REQUIRED" },
+    );
+    await assert.rejects(
+      service.requireAnalysisReupload(b.owner, one.documentId, workbook),
+      { code: "NOT_FOUND" },
+    );
+    await assert.rejects(
+      service.requireAnalysisReupload(
+        a.owner,
+        one.documentId,
+        pdfFixture([["Otro archivo"]]),
+      ),
+      { code: "DOCUMENT_REUPLOAD_MISMATCH" },
+    );
+    assert.deepEqual(
+      await service.requireAnalysisReupload(a.owner, one.documentId, workbook),
+      { documentId: one.documentId, format: "xlsx" },
+    );
+    // The verification uses memory only and never recreates an archived original.
     await assert.rejects(storage.get(one.documentId));
     const all = (await f.request(a, "GET", path + "/candidates")).json().items;
     assert.equal(all.length, 7);
@@ -432,13 +464,11 @@ test("F3 integrates private Storage, PostgreSQL drafts, confirmation, revisions 
     const failingWorker = new ImportWorker(service, async () => {
       throw new FileIssue("EXTRACTOR_UNAVAILABLE");
     });
-    for (let i = 0; i < 3; i++) {
-      await failingWorker.tick();
-      now.setUTCSeconds(now.getUTCSeconds() + 20);
-    }
+    await failingWorker.tick();
     const failed = await f.request(a, "GET", transientPath);
     assert.equal(failed.json().state, "failed", failed.body);
-    assert.equal(failed.json().originalAvailable, true);
+    assert.equal(failed.json().originalAvailable, false);
+    await assert.rejects(storage.get(transient.json().documentId));
     const retried = await f.request(
       a,
       "POST",
@@ -446,10 +476,19 @@ test("F3 integrates private Storage, PostgreSQL drafts, confirmation, revisions 
       undefined,
       failed.headers.etag as string,
     );
-    assert.equal(retried.statusCode, 202, retried.body);
+    assert.equal(retried.statusCode, 409, retried.body);
+    const resubmitted = await upload(
+      pdfFixture([["Tarea 8", "Due date: 2030-07-08"]]),
+      "retry.pdf",
+    );
+    assert.equal(resubmitted.statusCode, 202, resubmitted.body);
+    assert.notEqual(resubmitted.json().id, transient.json().id);
+    uploaded.add(resubmitted.json().documentId);
     await worker.tick();
     assert.equal(
-      (await f.request(a, "GET", transientPath)).json().state,
+      (
+        await f.request(a, "GET", api + "/imports/" + resubmitted.json().id)
+      ).json().state,
       "review",
     );
     const crash = await upload(
@@ -474,13 +513,23 @@ test("F3 integrates private Storage, PostgreSQL drafts, confirmation, revisions 
     );
     now.setUTCDate(now.getUTCDate() + 8);
     for (let i = 0; i < 5; i++) await worker.tick();
-    assert.equal(
-      (await service.get(a.owner, transient.json().id)).state,
-      "expired",
+    await assert.rejects(
+      service.requireAnalysisReupload(a.owner, resubmitted.json().documentId),
+      { code: "DOCUMENT_REUPLOAD_REQUIRED" },
+    );
+    await service.requireAnalysisReupload(
+      a.owner,
+      resubmitted.json().documentId,
+      pdfFixture([["Tarea 8", "Due date: 2030-07-08"]]),
     );
     assert.equal(
-      (await service.candidates(a.owner, transient.json().id, {})).items.length,
-      0,
+      (await service.get(a.owner, resubmitted.json().id)).state,
+      "review",
+    );
+    assert.equal(
+      (await service.candidates(a.owner, resubmitted.json().id, {})).items
+        .length,
+      1,
     );
     assert.equal(
       (await f.academics.getActivity(a.owner, id)).dueDate,
@@ -549,6 +598,14 @@ test("F3 recovers staged objects and retries interrupted deletion with explicit 
     assert.equal(objects.size, 1);
     await worker.tick();
     assert.equal((await service.get(a.owner, staged.id)).state, "review");
+    assert.equal(
+      (await service.get(a.owner, staged.id)).originalDeletionPending,
+      true,
+    );
+    await assert.rejects(
+      service.requireAnalysisReupload(a.owner, staged.documentId),
+      { code: "DOCUMENT_REUPLOAD_REQUIRED" },
+    );
     assert.equal(objects.size, 1);
     now.setUTCSeconds(now.getUTCSeconds() + 30);
     breakDelete = false;
@@ -578,6 +635,56 @@ test("F3 recovers staged objects and retries interrupted deletion with explicit 
     )!;
     assert.equal(latest.state, "failed");
     assert.equal(latest.originalAvailable, false);
+    breakPut = false;
+    const waitingBytes = pdfFixture([["Tarea 21"]]);
+    const waiting = await service.upload(
+      a.owner,
+      randomUUID(),
+      period,
+      "waiting.pdf",
+      waitingBytes,
+    );
+    now.setUTCSeconds(now.getUTCSeconds() + 121);
+    await worker.tick();
+    assert.equal(objects.size, 0);
+    const expired = await service.get(a.owner, waiting.id);
+    assert.equal(expired.state, "failed");
+    assert.equal(expired.errorCode, "IMPORT_ORIGINAL_EXPIRED");
+    assert.equal(expired.originalAvailable, false);
+    const replacement = await service.upload(
+      a.owner,
+      randomUUID(),
+      period,
+      "waiting.pdf",
+      waitingBytes,
+    );
+    assert.notEqual(replacement.id, waiting.id);
+    await worker.tick();
+    assert.equal((await service.get(a.owner, replacement.id)).state, "review");
+    assert.equal(objects.size, 0);
+    breakDelete = true;
+    const delayed = await service.upload(
+      a.owner,
+      randomUUID(),
+      period,
+      "delayed.pdf",
+      pdfFixture([["Tarea 22"]]),
+    );
+    await worker.tick();
+    assert.equal(objects.size, 1);
+    now.setUTCSeconds(now.getUTCSeconds() + 121);
+    await worker.tick(); // Retry fails after the original processing deadline.
+    breakDelete = false;
+    now.setUTCSeconds(now.getUTCSeconds() + 30);
+    await worker.tick();
+    assert.equal(objects.size, 1); // Expiry must not reset the deletion backoff.
+    now.setUTCSeconds(now.getUTCSeconds() + 31);
+    await worker.tick();
+    assert.equal(objects.size, 0);
+    assert.equal(
+      (await service.get(a.owner, delayed.id)).originalDeletionPending,
+      false,
+    );
   } finally {
     await f.close();
   }

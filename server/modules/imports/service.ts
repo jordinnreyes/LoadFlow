@@ -29,9 +29,13 @@ import {
 } from "./extraction/model.js";
 import { simplify } from "./extraction/recognize.js";
 import type { ImportStorage } from "./storage.js";
+import {
+  analysisSource,
+  ORIGINAL_PROCESSING_TTL_MS,
+  REUPLOAD_MESSAGE,
+} from "./policy.js";
 
 const version = "structural-1";
-const dayMs = 86_400_000;
 const digest = (bytes: Buffer) =>
   createHash("sha256").update(bytes).digest("hex");
 export const unavailable = () =>
@@ -144,11 +148,13 @@ const summary = (r: ImportRow) => ({
   errorCode: r.safe_error,
   errorMessage: r.safe_error
     ? (fileErrors[r.safe_error] ?? "No pudimos extraer el archivo.") +
-      " Puedes continuar manualmente."
+      " Vuelve a subir el archivo para intentarlo otra vez, o continúa manualmente."
     : null,
   coverage: r.coverage,
   warnings: r.warnings,
   originalAvailable: r.object_state === "stored",
+  originalDeletionPending: r.object_state === "delete_pending",
+  analysisSource: analysisSource(),
   reviewExpiresAt: iso(r.review_expires_at),
   manualEntryAvailable: true as const,
 });
@@ -293,7 +299,7 @@ export class ImportService {
         await ctx.db.execute(sql`insert into app.documents
         (id,owner_id,period_id,format,filename,size_bytes,sha256,object_state,created_at,object_expires_at)
         values (${documentId},${owner},${periodId},${format},${filename},${bytes.length},${sha},'staging',
-          ${now.toISOString()},${new Date(now.getTime() + dayMs).toISOString()})`);
+          ${now.toISOString()},${new Date(now.getTime() + ORIGINAL_PROCESSING_TTL_MS).toISOString()})`);
         await ctx.db
           .execute(sql`insert into app.imports(id,owner_id,period_id,document_id,queue_name,status,extractor_version,run_after)
         values(${id},${owner},${periodId},${documentId},${this.queueName},'uploading',${version},${now.toISOString()})`);
@@ -480,8 +486,7 @@ export class ImportService {
   private assertReview(r: ImportRow) {
     if (
       r.status !== "review" ||
-      !r.review_expires_at ||
-      r.review_expires_at <= this.now()
+      (r.review_expires_at !== null && r.review_expires_at <= this.now())
     )
       throw conflict(
         "IMPORT_NOT_REVIEWABLE",
@@ -711,7 +716,7 @@ export class ImportService {
         )
           throw conflict(
             "IMPORT_CANNOT_RETRY",
-            "No hay una copia disponible para reintentar la extracción.",
+            "No conservamos una copia para reintentar. Vuelve a subir el archivo.",
           );
         await ctx.db
           .execute(sql`update app.imports set status='queued',attempts=0,safe_error=null,run_after=${this.now().toISOString()},
@@ -829,20 +834,48 @@ export class ImportService {
         .execute(sql`insert into app.import_candidates(id,owner_id,import_id,ordinal,evidence,draft)
         values(${randomUUID()},${ctx.owner},${r.id},${index + 1},${json(evidence)},${json(d)})`);
     }
-    const expires = new Date(this.now().getTime() + 7 * dayMs).toISOString();
     await ctx.db
       .execute(sql`update app.imports set status='review',revision=revision+1,lease_token=null,lease_until=null,
-      coverage=${json(result.units)},warnings=${json(result.warnings)},safe_error=null,review_expires_at=${expires} where id=${r.id}`);
+      coverage=${json(result.units)},warnings=${json(result.warnings)},safe_error=null,review_expires_at=null where id=${r.id}`);
     await this.scheduleDelete(ctx, r);
   }
 
-  async scheduleDelete(ctx: Context, r: ImportRow) {
+  async scheduleDelete(ctx: Context, r: ImportRow, failed = false) {
     await ctx.db
       .execute(sql`update app.documents set filename=null,object_state='delete_pending',
-      delete_after=${this.now().toISOString()} where owner_id=${ctx.owner} and id=${r.document_id} and object_state<>'deleted'`);
+      sha256=case when ${failed} then null else sha256 end,
+      removed_at=case when ${failed} then ${this.now().toISOString()}::timestamptz else removed_at end,
+      delete_after=${this.now().toISOString()} where owner_id=${ctx.owner} and id=${r.document_id} and object_state in ('staging','stored')`);
   }
 
   validChecksum(r: ImportRow, bytes: Buffer) {
     return r.sha256 === digest(bytes);
+  }
+
+  // F5 must call this only after its own entitlement/consent checks. The old
+  // Storage object is never an analysis source, including while deletion retries.
+  async requireAnalysisReupload(
+    owner: string,
+    documentId: string,
+    bytes?: Buffer,
+  ) {
+    return this.academics.read(owner, async (ctx) => {
+      const r = await this.document(ctx, documentId);
+      if (!r.sha256 || ["removed", "cancelled", "expired"].includes(r.status))
+        throw conflict(
+          "DOCUMENT_SOURCE_REMOVED",
+          "La fuente se retiró. Adjunta un documento como nueva fuente de la actividad.",
+        );
+      this.assertReview(r);
+      if (!bytes)
+        throw conflict("DOCUMENT_REUPLOAD_REQUIRED", REUPLOAD_MESSAGE);
+      if (bytes.length > limits.bytes) throw limitError();
+      if (!this.validChecksum(r, bytes))
+        throw invalid(
+          "DOCUMENT_REUPLOAD_MISMATCH",
+          "Sube el mismo archivo que se usó para esta importación. Si cambió, revísalo como una nueva fuente.",
+        );
+      return { documentId: r.document_id, format: r.format };
+    });
   }
 }

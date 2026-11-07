@@ -4,6 +4,8 @@ Continuación F2: [disponibilidad y Calendar](./F2-DEVELOPMENT.md). Los resultad
 
 Continuación F4 en [planificación, propuestas y sesiones](./F4-DEVELOPMENT.md).
 
+Importación local habilitada con originales temporales: [política, requisitos y verificación F3](./F3-DEVELOPMENT.md). Requiere Docker, la imagen del parser fijada y Storage privado; el servidor no descarga imágenes ni utiliza un parser alternativo sin aislamiento.
+
 Stack y gates: ARCHITECTURE.md / PLAN.md. La UI de `src/` conserva su modo demo; integrar API es F6. No se inicia producción ni se crean servicios cloud con estos pasos.
 
 ## Entorno y comandos

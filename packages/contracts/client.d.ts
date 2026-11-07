@@ -13624,6 +13624,14 @@ export interface operations {
                             errorCode: string | null;
                             errorMessage: string | null;
                             originalAvailable: boolean;
+                            originalDeletionPending: boolean;
+                            analysisSource: {
+                                /** @enum {string} */
+                                state: "reupload_required";
+                                /** @enum {string} */
+                                code: "DOCUMENT_REUPLOAD_REQUIRED";
+                                message: string;
+                            };
                             reviewExpiresAt: string | null;
                             /** @enum {boolean} */
                             manualEntryAvailable: true;
@@ -14197,6 +14205,14 @@ export interface operations {
                         errorCode: string | null;
                         errorMessage: string | null;
                         originalAvailable: boolean;
+                        originalDeletionPending: boolean;
+                        analysisSource: {
+                            /** @enum {string} */
+                            state: "reupload_required";
+                            /** @enum {string} */
+                            code: "DOCUMENT_REUPLOAD_REQUIRED";
+                            message: string;
+                        };
                         reviewExpiresAt: string | null;
                         /** @enum {boolean} */
                         manualEntryAvailable: true;

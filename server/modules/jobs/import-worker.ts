@@ -4,12 +4,6 @@ import { FileIssue } from "../imports/extraction/model.js";
 import type { Extractor } from "../imports/runner.js";
 import type { ImportService } from "../imports/service.js";
 
-const retryable = new Set([
-  "STORAGE_UNAVAILABLE",
-  "EXTRACTOR_UNAVAILABLE",
-  "EXTRACTION_TIMEOUT",
-  "EXTRACTION_FAILED",
-]);
 type Job = { id: string; owner_id: string };
 
 export class ImportWorker {
@@ -49,13 +43,10 @@ export class ImportWorker {
         await this.service.persist(ctx, current, result);
         return;
       }
-      const transient = retryable.has(error ?? "");
-      const reschedule = transient && current.attempts < 3;
-      await ctx.db
-        .execute(sql`update app.imports set status=${reschedule ? "queued" : "failed"},
+      await ctx.db.execute(sql`update app.imports set status='failed',
         safe_error=${error},lease_token=null,lease_until=null,revision=revision+1,
         run_after=${new Date(now.getTime() + 5_000 * current.attempts).toISOString()} where id=${current.id}`);
-      if (!transient) await this.service.scheduleDelete(ctx, current);
+      await this.service.scheduleDelete(ctx, current, true);
     });
   }
 
@@ -89,7 +80,14 @@ export class ImportWorker {
           safe_error=${exhausted ? "RETRY_EXHAUSTED" : "IMPORT_ORIGINAL_EXPIRED"},
           lease_token=null,lease_until=null,revision=revision+1 where id=${r.id}`);
       }
-      if (abandoned || expired) await this.service.scheduleDelete(ctx, r);
+      if (abandoned || expired || exhausted) {
+        await this.service.scheduleDelete(
+          ctx,
+          r,
+          ["uploading", "queued", "running", "failed"].includes(r.status),
+        );
+        r = await this.service.row(ctx, job.id);
+      }
       if (
         r.object_state === "deleted" ||
         (r.object_state !== "delete_pending" && !abandoned && !expired)

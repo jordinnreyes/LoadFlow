@@ -1,6 +1,6 @@
 # F4 · Planificación Free
 
-El promotor autorizó F4 en esta sesión desde `65e0355`. La rama de desarrollo es `codex/f4-planning`. La UI se integra en F6. Las importaciones conservan su gate D-15 y la composición normal del servidor mantiene su carga deshabilitada.
+El promotor autorizó F4 en esta sesión desde `65e0355`. La rama de desarrollo es `codex/f4-planning`. La UI se integra en F6. Al cerrar F4, las importaciones seguían deshabilitadas. La autorización posterior de originales temporales y su habilitación local están en PLAN §19 y docs/F3-DEVELOPMENT.md.
 
 ## Reglas aprobadas localmente
 
@@ -85,4 +85,4 @@ Las ocho pruebas nuevas del núcleo cubren reglas temporales, prioridad en compe
 
 El último caso demuestra 60 minutos de déficit por capacidad y marca también la búsqueda limitada. La prueba de timeout usa un plazo reducido de fixture y verifica aborto sin devolver una distribución parcial. El benchmark reproducible está en `scripts/backend/benchmark-planning.ts`; sus resultados locales se escriben en `.local/f4/benchmark.json`, ignorado por Git. Los tiempos corresponden a una ejecución y varían con la máquina y su carga.
 
-F4 se verifica con entradas académicas manuales y fixtures. La habilitación operativa del recorrido de importación sigue pendiente de D-15 por instrucción del promotor. La revisión del promotor y el cierre del hito M2 se registran por separado. Premium corresponde a F5 y la conexión de la UI a F6.
+F4 se verificó con entradas académicas manuales y fixtures. La habilitación posterior de importaciones locales no convierte esa evidencia histórica en una prueba de UI integrada. La revisión del promotor y el cierre del hito M2 se registran por separado. Premium corresponde a F5 y la conexión de la UI a F6.

@@ -63,6 +63,15 @@ export const ImportSummary = Type.Object(
     errorCode: NullableText,
     errorMessage: NullableText,
     originalAvailable: Type.Boolean(),
+    originalDeletionPending: Type.Boolean(),
+    analysisSource: Type.Object(
+      {
+        state: Type.Literal("reupload_required"),
+        code: Type.Literal("DOCUMENT_REUPLOAD_REQUIRED"),
+        message: Type.String(),
+      },
+      strict,
+    ),
     reviewExpiresAt: Type.Union([Instant, Type.Null()]),
     manualEntryAvailable: Type.Literal(true),
   },

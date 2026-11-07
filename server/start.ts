@@ -9,6 +9,7 @@ import { GoogleCalendarProvider } from "./modules/calendar/provider.js";
 import { CalendarWorker } from "./modules/jobs/calendar-worker.js";
 import { PlanningService } from "./modules/planning/service.js";
 import { PlanningWorker } from "./modules/jobs/planning-worker.js";
+import { localImports } from "./modules/imports/local.js";
 const config = runtimeConfig();
 if (!config.databaseUrl)
   throw new Error("Falta DATABASE_URL. Consulta .env.example y README.");
@@ -17,6 +18,7 @@ const required = [
   "IDENTITY_DATABASE_URL",
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
   "CREDENTIAL_ENCRYPTION_KEY",
 ] as const;
 for (const name of required)
@@ -62,19 +64,26 @@ const calendar = new CalendarService(
 const worker = new CalendarWorker(calendar);
 const planning = new PlanningService(identity, calendar);
 const planningWorker = new PlanningWorker(planning);
+const imports = await localImports(
+  identity,
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 const app = await buildApp({
   logger: true,
   identity,
   calendar,
   planning,
+  imports: imports.service,
   ready: async () => {
     await db.pool.query("select 1");
   },
 });
 let stopWorker: () => Promise<void> = async () => {};
 let stopPlanning: () => Promise<void> = async () => {};
+let stopImports: () => Promise<void> = async () => {};
 app.addHook("onClose", async () => {
-  await Promise.allSettled([stopWorker(), stopPlanning()]);
+  await Promise.allSettled([stopWorker(), stopPlanning(), stopImports()]);
   await db.pool.end();
   await identityDb.pool.end();
 });
@@ -93,5 +102,11 @@ stopPlanning = planningWorker.start(() =>
   app.log.error(
     { code: "PLANNING_WORKER_FAILED" },
     "Planning queue could not advance",
+  ),
+);
+stopImports = imports.worker.start(() =>
+  app.log.error(
+    { code: "IMPORT_WORKER_FAILED" },
+    "Import queue could not advance",
   ),
 );
