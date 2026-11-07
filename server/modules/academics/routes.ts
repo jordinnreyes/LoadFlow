@@ -13,6 +13,7 @@ import type { Identity } from "../identity/service.js";
 import { SESSION_COOKIE } from "../identity/service.js";
 import { header } from "../identity/routes.js";
 import { DomainError } from "../../errors.js";
+import { Entitlements } from "../entitlements/service.js";
 const errors = {
   401: ErrorResponse,
   403: ErrorResponse,
@@ -111,6 +112,7 @@ const DateHistory = Type.Object(
 export async function academicsRoutes(
   app: FastifyInstance,
   getIdentity: () => Identity,
+  estimatesConfigured = false,
 ) {
   const authorize = async (r: FastifyRequest, write = false) => {
     const identity = getIdentity();
@@ -171,10 +173,11 @@ export async function academicsRoutes(
         response: {
           200: Type.Object(
             {
-              plan: Type.Literal("Free"),
+              plan: Type.Union([Type.Literal("Free"), Type.Literal("Premium")]),
+              premiumExpiresAt: C.NullableInstant,
               manualEstimates: Type.Literal(true),
               realTimeTracking: Type.Literal(true),
-              aiEstimates: Type.Literal(false),
+              aiEstimates: Type.Boolean(),
               planningImplementation: Type.Literal("phase4"),
             },
             strict,
@@ -184,12 +187,17 @@ export async function academicsRoutes(
       },
     },
     async (r) => {
-      await authorize(r);
+      const { owner, service } = await authorize(r);
+      const entitlement = await new Entitlements(service).get(
+        owner,
+        estimatesConfigured,
+      );
       return {
-        plan: "Free",
+        plan: entitlement.plan === "premium" ? "Premium" : "Free",
+        premiumExpiresAt: entitlement.expiresAt,
         manualEstimates: true,
         realTimeTracking: true,
-        aiEstimates: false,
+        aiEstimates: entitlement.estimatesAvailable,
         planningImplementation: "phase4",
       };
     },

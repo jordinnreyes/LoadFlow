@@ -15,10 +15,12 @@ import { CalendarService } from "../../server/modules/calendar/service.js";
 import type { CalendarProvider } from "../../server/modules/calendar/provider.js";
 import { PlanningService } from "../../server/modules/planning/service.js";
 import type { ImportService } from "../../server/modules/imports/service.js";
+import type { Estimates } from "../../server/modules/estimates/service.js";
 export async function fixture(
   now = new Date("2030-01-01T00:00:00Z"),
   calendarProvider?: CalendarProvider,
   importService?: (identity: Identity) => ImportService,
+  estimateService?: (academics: Academics) => Estimates,
 ) {
   const db = database(process.env.DATABASE_URL!),
     ids = database(process.env.IDENTITY_DATABASE_URL!);
@@ -67,7 +69,13 @@ export async function fixture(
   );
   const imports = importService?.(identity);
   const planning = new PlanningService(identity, calendar);
-  const app = await buildApp({ identity, calendar, imports, planning });
+  const app = await buildApp({
+    identity,
+    calendar,
+    imports,
+    planning,
+    estimates: estimateService?.(academics),
+  });
   async function client(tokenLifetimeSeconds = 3600) {
     const { data, error } = await admin.auth.admin.createUser({
       email: `f2-${randomUUID()}@fixture.test`,

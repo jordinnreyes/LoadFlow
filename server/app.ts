@@ -20,6 +20,8 @@ import type { ImportService } from "./modules/imports/service.js";
 import { PlanningService } from "./modules/planning/service.js";
 import { planningRoutes } from "./modules/planning/routes.js";
 import { documentProtocol } from "./openapi.js";
+import { estimateRoutes } from "./modules/estimates/routes.js";
+import type { Estimates } from "./modules/estimates/service.js";
 
 export async function buildApp(
   options: {
@@ -29,6 +31,7 @@ export async function buildApp(
     calendar?: CalendarService;
     imports?: ImportService;
     planning?: PlanningService;
+    estimates?: Estimates;
   } = {},
 ) {
   assertRuntime();
@@ -177,7 +180,8 @@ export async function buildApp(
     return options.identity;
   };
   await identityRoutes(app, getIdentity);
-  await academicsRoutes(app, getIdentity);
+  await academicsRoutes(app, getIdentity, Boolean(options.estimates));
+  await estimateRoutes(app, getIdentity, options.estimates);
   const getCalendar = () =>
     options.calendar ?? new CalendarService(getIdentity());
   await availabilityRoutes(app, getIdentity, getCalendar);

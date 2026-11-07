@@ -45,6 +45,7 @@ export const documentProtocol: SwaggerTransformObject = (document) => {
             "cancelImport",
             "previewStudyPlan",
             "confirmGroupEquivalence",
+            "requestEstimate",
           ].includes(operation.operationId ?? "")
         )
           headers.push("If-Match");

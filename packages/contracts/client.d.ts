@@ -452,6 +452,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/estimate-consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getEstimateConsent"];
+        put: operations["setEstimateConsent"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/activities/{id}/estimates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requestEstimate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/estimates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getEstimate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/periods/{id}/availability": {
         parameters: {
             query?: never;
@@ -2264,14 +2312,13 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        plan: "Free";
+                        plan: "Free" | "Premium";
+                        premiumExpiresAt: string | null;
                         /** @enum {boolean} */
                         manualEstimates: true;
                         /** @enum {boolean} */
                         realTimeTracking: true;
-                        /** @enum {boolean} */
-                        aiEstimates: false;
+                        aiEstimates: boolean;
                         /** @enum {string} */
                         planningImplementation: "phase4";
                     };
@@ -7145,6 +7192,897 @@ export interface operations {
             };
             /** @description Default Response */
             428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getEstimateConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        policyVersion: string;
+                        granted: boolean;
+                        revision: number;
+                        notice: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    setEstimateConsent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Origen exacto configurado para el cliente web. */
+                Origin: string;
+                /** @description Token obtenido de la sesión, ligado a su cookie opaca. */
+                "X-CSRF-Token": string;
+                /** @description Clave de 1–128 caracteres alfanuméricos, : _ o -. Repetir la misma operación/cuerpo devuelve el resultado original; reutilizar con otros datos devuelve 409. */
+                "Idempotency-Key": string;
+                /** @description ETag vigente; 428 si falta y 412 si cambió. Aplicar una propuesta requiere el ETag workspace de su vista previa. */
+                "If-Match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    policyVersion: string;
+                    granted: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        policyVersion: string;
+                        granted: boolean;
+                        revision: number;
+                        notice: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    requestEstimate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Origen exacto configurado para el cliente web. */
+                Origin: string;
+                /** @description Token obtenido de la sesión, ligado a su cookie opaca. */
+                "X-CSRF-Token": string;
+                /** @description Clave de 1–128 caracteres alfanuméricos, : _ o -. Repetir la misma operación/cuerpo devuelve el resultado original; reutilizar con otros datos devuelve 409. */
+                "Idempotency-Key": string;
+                /** @description ETag vigente; 428 si falta y 412 si cambió. Aplicar una propuesta requiere el ETag workspace de su vista previa. */
+                "If-Match": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    excerpt: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        activityId: string;
+                        activityRevision: number;
+                        state: "pending" | "complete" | "failed" | "outcome_unknown";
+                        suggestion: {
+                            status: "estimated" | "needs_context" | "abstained";
+                            lowMinutes: number | null;
+                            highMinutes: number | null;
+                            factors: ("deliverables" | "volume" | "validation" | "prerequisites")[];
+                            missingContext: ("scope" | "deliverables" | "volume")[];
+                        } | null;
+                        errorCode: string | null;
+                        model: string;
+                        promptVersion: string;
+                        /** @enum {string} */
+                        origin: "base";
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {boolean} */
+                        manualEntryAvailable: true;
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getEstimate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        activityId: string;
+                        activityRevision: number;
+                        state: "pending" | "complete" | "failed" | "outcome_unknown";
+                        suggestion: {
+                            status: "estimated" | "needs_context" | "abstained";
+                            lowMinutes: number | null;
+                            highMinutes: number | null;
+                            factors: ("deliverables" | "volume" | "validation" | "prerequisites")[];
+                            missingContext: ("scope" | "deliverables" | "volume")[];
+                        } | null;
+                        errorCode: string | null;
+                        model: string;
+                        promptVersion: string;
+                        /** @enum {string} */
+                        origin: "base";
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {boolean} */
+                        manualEntryAvailable: true;
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

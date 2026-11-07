@@ -3775,6 +3775,7 @@
                   "type": "object",
                   "required": [
                     "plan",
+                    "premiumExpiresAt",
                     "manualEstimates",
                     "realTimeTracking",
                     "aiEstimates",
@@ -3782,9 +3783,30 @@
                   ],
                   "properties": {
                     "plan": {
-                      "type": "string",
-                      "enum": [
-                        "Free"
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "Free"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "Premium"
+                          ]
+                        }
+                      ]
+                    },
+                    "premiumExpiresAt": {
+                      "anyOf": [
+                        {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "manualEstimates": {
@@ -3800,10 +3822,7 @@
                       ]
                     },
                     "aiEstimates": {
-                      "type": "boolean",
-                      "enum": [
-                        false
-                      ]
+                      "type": "boolean"
                     },
                     "planningImplementation": {
                       "type": "string",
@@ -22149,6 +22168,2858 @@
             }
           },
           "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/estimate-consent": {
+      "get": {
+        "operationId": "getEstimateConsent",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "policyVersion",
+                    "granted",
+                    "revision",
+                    "notice"
+                  ],
+                  "properties": {
+                    "policyVersion": {
+                      "type": "string"
+                    },
+                    "granted": {
+                      "type": "boolean"
+                    },
+                    "revision": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "notice": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setEstimateConsent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "policyVersion",
+                  "granted"
+                ],
+                "properties": {
+                  "policyVersion": {
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "type": "string"
+                  },
+                  "granted": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "policyVersion",
+                    "granted",
+                    "revision",
+                    "notice"
+                  ],
+                  "properties": {
+                    "policyVersion": {
+                      "type": "string"
+                    },
+                    "granted": {
+                      "type": "boolean"
+                    },
+                    "revision": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "notice": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "description": "Origen exacto configurado para el cliente web.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "description": "Token obtenido de la sesión, ligado a su cookie opaca.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "Clave de 1–128 caracteres alfanuméricos, : _ o -. Repetir la misma operación/cuerpo devuelve el resultado original; reutilizar con otros datos devuelve 409.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "ETag vigente; 428 si falta y 412 si cambió. Aplicar una propuesta requiere el ETag workspace de su vista previa.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/activities/{id}/estimates": {
+      "post": {
+        "operationId": "requestEstimate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "excerpt"
+                ],
+                "properties": {
+                  "excerpt": {
+                    "minLength": 1,
+                    "maxLength": 2400,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "description": "Origen exacto configurado para el cliente web.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "description": "Token obtenido de la sesión, ligado a su cookie opaca.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "Clave de 1–128 caracteres alfanuméricos, : _ o -. Repetir la misma operación/cuerpo devuelve el resultado original; reutilizar con otros datos devuelve 409.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "ETag vigente; 428 si falta y 412 si cambió. Aplicar una propuesta requiere el ETag workspace de su vista previa.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "activityId",
+                    "activityRevision",
+                    "state",
+                    "suggestion",
+                    "errorCode",
+                    "model",
+                    "promptVersion",
+                    "origin",
+                    "createdAt",
+                    "manualEntryAvailable"
+                  ],
+                  "properties": {
+                    "id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "activityId": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "activityRevision": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "state": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "pending"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "complete"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "failed"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "outcome_unknown"
+                          ]
+                        }
+                      ]
+                    },
+                    "suggestion": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "status",
+                            "lowMinutes",
+                            "highMinutes",
+                            "factors",
+                            "missingContext"
+                          ],
+                          "properties": {
+                            "status": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "estimated"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "needs_context"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "abstained"
+                                  ]
+                                }
+                              ]
+                            },
+                            "lowMinutes": {
+                              "anyOf": [
+                                {
+                                  "minimum": 1,
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "highMinutes": {
+                              "anyOf": [
+                                {
+                                  "minimum": 1,
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "factors": {
+                              "maxItems": 4,
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "deliverables"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "volume"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "validation"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "prerequisites"
+                                    ]
+                                  }
+                                ]
+                              }
+                            },
+                            "missingContext": {
+                              "maxItems": 3,
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "scope"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "deliverables"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "volume"
+                                    ]
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "errorCode": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "model": {
+                      "type": "string"
+                    },
+                    "promptVersion": {
+                      "type": "string"
+                    },
+                    "origin": {
+                      "type": "string",
+                      "enum": [
+                        "base"
+                      ]
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "manualEntryAvailable": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/estimates/{id}": {
+      "get": {
+        "operationId": "getEstimate",
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "activityId",
+                    "activityRevision",
+                    "state",
+                    "suggestion",
+                    "errorCode",
+                    "model",
+                    "promptVersion",
+                    "origin",
+                    "createdAt",
+                    "manualEntryAvailable"
+                  ],
+                  "properties": {
+                    "id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "activityId": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "activityRevision": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "state": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "pending"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "complete"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "failed"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "outcome_unknown"
+                          ]
+                        }
+                      ]
+                    },
+                    "suggestion": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "status",
+                            "lowMinutes",
+                            "highMinutes",
+                            "factors",
+                            "missingContext"
+                          ],
+                          "properties": {
+                            "status": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "estimated"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "needs_context"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "abstained"
+                                  ]
+                                }
+                              ]
+                            },
+                            "lowMinutes": {
+                              "anyOf": [
+                                {
+                                  "minimum": 1,
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "highMinutes": {
+                              "anyOf": [
+                                {
+                                  "minimum": 1,
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "factors": {
+                              "maxItems": 4,
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "deliverables"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "volume"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "validation"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "prerequisites"
+                                    ]
+                                  }
+                                ]
+                              }
+                            },
+                            "missingContext": {
+                              "maxItems": 3,
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "scope"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "deliverables"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "volume"
+                                    ]
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "errorCode": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "model": {
+                      "type": "string"
+                    },
+                    "promptVersion": {
+                      "type": "string"
+                    },
+                    "origin": {
+                      "type": "string",
+                      "enum": [
+                        "base"
+                      ]
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "manualEntryAvailable": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "fieldErrors",
+                        "requestId",
+                        "retryable"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fieldErrors": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
             "description": "Default Response",
             "content": {
               "application/json": {
