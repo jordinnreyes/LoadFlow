@@ -7,6 +7,8 @@ import { Academics } from "./modules/academics/service.js";
 import { CalendarService } from "./modules/calendar/service.js";
 import { GoogleCalendarProvider } from "./modules/calendar/provider.js";
 import { CalendarWorker } from "./modules/jobs/calendar-worker.js";
+import { PlanningService } from "./modules/planning/service.js";
+import { PlanningWorker } from "./modules/jobs/planning-worker.js";
 const config = runtimeConfig();
 if (!config.databaseUrl)
   throw new Error("Falta DATABASE_URL. Consulta .env.example y README.");
@@ -58,17 +60,21 @@ const calendar = new CalendarService(
     : undefined,
 );
 const worker = new CalendarWorker(calendar);
+const planning = new PlanningService(identity, calendar);
+const planningWorker = new PlanningWorker(planning);
 const app = await buildApp({
   logger: true,
   identity,
   calendar,
+  planning,
   ready: async () => {
     await db.pool.query("select 1");
   },
 });
 let stopWorker: () => Promise<void> = async () => {};
+let stopPlanning: () => Promise<void> = async () => {};
 app.addHook("onClose", async () => {
-  await stopWorker();
+  await Promise.allSettled([stopWorker(), stopPlanning()]);
   await db.pool.end();
   await identityDb.pool.end();
 });
@@ -81,5 +87,11 @@ stopWorker = worker.start(() =>
   app.log.error(
     { code: "CALENDAR_WORKER_FAILED" },
     "Calendar queue could not advance",
+  ),
+);
+stopPlanning = planningWorker.start(() =>
+  app.log.error(
+    { code: "PLANNING_WORKER_FAILED" },
+    "Planning queue could not advance",
   ),
 );

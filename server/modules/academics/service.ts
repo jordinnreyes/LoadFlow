@@ -1,3 +1,4 @@
+import type { PlanningStatus } from "../../../packages/contracts/index.js";
 import { reportProgress } from "../progress/service.js";
 import { randomUUID, createHash } from "node:crypto";
 import { and, eq, gt, asc, desc, sql, type SQL } from "drizzle-orm";
@@ -56,7 +57,7 @@ const stable = (v: unknown): string =>
             )
             .join(",") +
           "}";
-const digest = (v: unknown) =>
+export const digest = (v: unknown) =>
   createHash("sha256").update(stable(v)).digest("hex");
 async function query<T>(db: NodePgDatabase, statement: SQL) {
   return (await db.execute(statement)).rows as unknown as T[];
@@ -68,7 +69,10 @@ const clean = (value: string) => {
 };
 const stamp = (v: string | null | undefined) =>
   v == null ? null : new Date(v).toISOString();
-const periodDto = (p: typeof periods.$inferSelect) => ({
+const periodDto = (
+  p: typeof periods.$inferSelect,
+  planningState: PlanningStatus,
+) => ({
   id: p.id,
   name: p.name,
   startDate: p.startDate,
@@ -77,7 +81,7 @@ const periodDto = (p: typeof periods.$inferSelect) => ({
   revision: p.revision,
   workspaceRevision: p.workspaceRevision,
   isDefault: p.isDefault,
-  planningState: "not_generated" as const,
+  planningState,
 });
 const courseDto = (c: typeof courses.$inferSelect) => ({
   id: c.id,
@@ -90,6 +94,7 @@ export class Academics {
   constructor(
     readonly pool: pg.Pool,
     readonly now: () => Date = () => new Date(),
+    readonly planningQueue = "planning",
   ) {}
   async read<T>(owner: string, run: (ctx: Context) => Promise<T>) {
     return ownerTransaction(this.pool, owner, async (c) => {
@@ -115,25 +120,39 @@ export class Academics {
       );
     return this.read(owner, async (ctx) => {
       const hash = digest(input);
-      const saved = await query<{ request_hash: string; response: Result }>(
-        ctx.db,
-        sql`select request_hash,response from app.idempotency_records where owner_id=${owner} and operation=${operation} and key=${key}`,
-      );
-      if (saved[0]) {
-        if (saved[0].request_hash !== hash)
-          throw new DomainError(
-            409,
-            "IDEMPOTENCY_CONFLICT",
-            "Esta clave ya se utilizó con otros cambios.",
-          );
-        return saved[0].response;
-      }
+      const replay = await this.replayIn(ctx, operation, key, input);
+      if (replay) return replay;
       const result = await run(ctx);
       await ctx.db.execute(
         sql`insert into app.idempotency_records(owner_id,operation,key,request_hash,response) values(${owner},${operation},${key},${hash},${JSON.stringify(result)}::jsonb)`,
       );
       return result;
     });
+  }
+  async replayIn(
+    ctx: Context,
+    operation: string,
+    key: string | undefined,
+    input: unknown,
+  ) {
+    if (!key || !/^[a-zA-Z0-9:_-]{1,128}$/.test(key))
+      throw new DomainError(
+        428,
+        "IDEMPOTENCY_KEY_REQUIRED",
+        "Envía una clave de operación válida para guardar.",
+      );
+    const saved = await query<{ request_hash: string; response: Result }>(
+      ctx.db,
+      sql`select request_hash,response from app.idempotency_records where owner_id=${ctx.owner} and operation=${operation} and key=${key}`,
+    );
+    if (!saved[0]) return null;
+    if (saved[0].request_hash !== digest(input))
+      throw new DomainError(
+        409,
+        "IDEMPOTENCY_CONFLICT",
+        "Esta clave ya se utilizó con otros cambios.",
+      );
+    return saved[0].response;
   }
   async ensureUser(owner: string, displayName = "Estudiante") {
     return this.read(owner, async ({ db }) => {
@@ -269,9 +288,34 @@ export class Academics {
         updatedAt: this.now().toISOString(),
       })
       .where(and(eq(periods.id, periodId), eq(periods.ownerId, ctx.owner)));
+    await this.enqueuePlanning(ctx, periodId);
+  }
+  private async enqueuePlanning(ctx: Context, periodId: string) {
+    await ctx.db
+      .execute(sql`insert into app.planning_jobs(owner_id,period_id,workspace_revision,queue_name,status,run_after)
+      select owner_id,id,workspace_revision,${this.planningQueue},'queued',${this.now().toISOString()}
+      from app.academic_periods where owner_id=${ctx.owner} and id=${periodId} and plan_revision>0
+      on conflict(owner_id,period_id) do update set workspace_revision=excluded.workspace_revision,
+      queue_name=excluded.queue_name,status='queued',attempts=0,lease_token=null,lease_until=null,
+      proposal_id=null,safe_error=null,run_after=excluded.run_after`);
+  }
+  async planningState(ctx: Context, periodId: string): Promise<PlanningStatus> {
+    const [row] = await query<{ state: PlanningStatus }>(
+      ctx.db,
+      sql`select case
+      when p.plan_revision=0 then 'not_generated'
+      when v.workspace_revision<>p.workspace_revision or v.source_valid_until<${this.now().toISOString()}::timestamptz or exists(
+        select 1 from app.sessions s where (s.owner_id,s.period_id)=(p.owner_id,p.id)
+        and s.state='planned' and s.start_at<${this.now().toISOString()}::timestamptz)
+      then 'stale' else 'current' end as state
+      from app.academic_periods p left join app.plan_versions v on (v.owner_id,v.period_id,v.plan_revision)=(p.owner_id,p.id,p.plan_revision)
+      where p.owner_id=${ctx.owner} and p.id=${periodId}`,
+    );
+    return row?.state ?? "not_generated";
   }
   listPeriods(owner: string, page: Page) {
-    return this.read(owner, async ({ db }) => {
+    return this.read(owner, async (ctx) => {
+      const { db } = ctx;
       const size = Number(page.limit ?? 50);
       const rows = await db
         .select()
@@ -285,7 +329,13 @@ export class Academics {
         .orderBy(asc(periods.id))
         .limit(size + 1);
       return {
-        items: rows.slice(0, size).map(periodDto),
+        items: await Promise.all(
+          rows
+            .slice(0, size)
+            .map(async (p) =>
+              periodDto(p, await this.planningState(ctx, p.id)),
+            ),
+        ),
         nextCursor: rows.length > size ? rows[size - 1].id : null,
       };
     });
@@ -351,9 +401,10 @@ export class Academics {
                 createdAt: this.now().toISOString(),
               })
               .returning();
+        if (p) await this.enqueuePlanning(ctx, next.id);
         return {
           status: p ? 200 : 201,
-          data: periodDto(next),
+          data: periodDto(next, await this.planningState(ctx, next.id)),
           etag: `"period-${next.revision}"`,
         };
       },
@@ -432,6 +483,7 @@ export class Academics {
   async activityDto(
     ctx: Context,
     a: typeof activities.$inferSelect,
+    planningState?: PlanningStatus,
   ): Promise<ActivityDto> {
     const p = (
       await ctx.db.select().from(progress).where(eq(progress.activityId, a.id))
@@ -503,7 +555,8 @@ export class Academics {
       preparationState: a.preparationState,
       fulfillmentState: a.fulfillmentState,
       revision: a.revision,
-      planningState: "not_generated",
+      planningState:
+        planningState ?? (await this.planningState(ctx, a.periodId)),
     };
   }
   getActivity(owner: string, id: string) {
@@ -1024,7 +1077,7 @@ export class Academics {
         source: input.source,
         state: "pending",
         applied: false,
-        planningState: "not_generated",
+        planningState: await this.planningState(ctx, a.periodId),
       },
       etag: `"workspace-${period.workspaceRevision}"`,
     };
@@ -1049,6 +1102,7 @@ export class Academics {
       )
     )[0];
     if (!row) throw notFound();
+    const a = await this.requireActivity(ctx, row.activity_id);
     return {
       id: row.id,
       activityId: row.activity_id,
@@ -1058,7 +1112,7 @@ export class Academics {
       source: row.source,
       state: row.state,
       applied: row.state === "applied",
-      planningState: "not_generated",
+      planningState: await this.planningState(ctx, a.periodId),
     };
   }
   applyDateProposal(
@@ -1067,77 +1121,79 @@ export class Academics {
     id: string,
     version: string | undefined,
   ) {
-    return this.mutate(
-      owner,
-      `apply-date:${id}`,
-      key,
-      { version },
-      async (ctx) => {
-        const row = (
-          await query<{
-            id: string;
-            activity_id: string;
-            base_revision: number;
-            workspace_revision: number;
-            before_value: unknown;
-            after_value: DateChange;
-            source: unknown;
-            state: string;
-          }>(
-            ctx.db,
-            sql`select * from app.date_change_proposals where owner_id=${owner} and id=${id}`,
-          )
-        )[0];
-        if (!row) throw notFound();
-        if (row.state !== "pending")
-          throw new DomainError(
-            409,
-            "PROPOSAL_ALREADY_APPLIED",
-            "Esta propuesta ya fue aplicada.",
-          );
-        const a = await this.requireActivity(ctx, row.activity_id);
-        const p = await this.requirePeriod(ctx, a.periodId);
-        requireRevision(version, "workspace", p.workspaceRevision);
-        if (
-          a.revision !== row.base_revision ||
-          p.workspaceRevision !== row.workspace_revision
-        )
-          throw new DomainError(
-            412,
-            "REVISION_MISMATCH",
-            "Cambiaron datos desde la propuesta. Revisa nuevamente.",
-          );
-        const d = row.after_value;
-        const [next] = await ctx.db
-          .update(activities)
-          .set({
-            dueDate: d.dueDate,
-            dueTime: d.dueTime ?? null,
-            timezone: d.timezone ?? null,
-            dueAt: academicInstant(
-              d.dueDate,
-              d.dueTime ?? null,
-              d.timezone ?? null,
-            ),
-            revision: a.revision + 1,
-            updatedAt: this.now().toISOString(),
-          })
-          .where(eq(activities.id, a.id))
-          .returning();
-        await this.setFixed(ctx, next, d.evaluationEndAt ?? null);
-        await ctx.db.execute(
-          sql`insert into app.academic_date_revisions(id,owner_id,activity_id,activity_revision,before_value,after_value,source,confirmed_at) values(${randomUUID()},${owner},${a.id},${next.revision},${JSON.stringify(row.before_value)}::jsonb,${JSON.stringify(row.after_value)}::jsonb,${JSON.stringify(row.source)}::jsonb,${this.now().toISOString()})`,
-        );
-        await ctx.db.execute(
-          sql`update app.date_change_proposals set state='applied' where owner_id=${owner} and id=${id}`,
-        );
-        await this.touch(ctx, a.periodId);
-        return {
-          status: 200,
-          data: await this.activityDto(ctx, next),
-          etag: `"activity-${next.revision}"`,
-        };
-      },
+    return this.mutate(owner, `apply-date:${id}`, key, { version }, (ctx) =>
+      this.applyDateProposalIn(ctx, id, version),
     );
+  }
+  async applyDateProposalIn(
+    ctx: Context,
+    id: string,
+    version: string | undefined,
+  ) {
+    const owner = ctx.owner;
+    const row = (
+      await query<{
+        id: string;
+        activity_id: string;
+        base_revision: number;
+        workspace_revision: number;
+        before_value: unknown;
+        after_value: DateChange;
+        source: unknown;
+        state: string;
+      }>(
+        ctx.db,
+        sql`select * from app.date_change_proposals where owner_id=${owner} and id=${id}`,
+      )
+    )[0];
+    if (!row) throw notFound();
+    if (row.state !== "pending")
+      throw new DomainError(
+        409,
+        "PROPOSAL_ALREADY_APPLIED",
+        "Esta propuesta ya fue aplicada.",
+      );
+    const a = await this.requireActivity(ctx, row.activity_id);
+    const p = await this.requirePeriod(ctx, a.periodId);
+    requireRevision(version, "workspace", p.workspaceRevision);
+    if (
+      a.revision !== row.base_revision ||
+      p.workspaceRevision !== row.workspace_revision
+    )
+      throw new DomainError(
+        412,
+        "REVISION_MISMATCH",
+        "Cambiaron datos desde la propuesta. Revisa nuevamente.",
+      );
+    const d = row.after_value;
+    const [next] = await ctx.db
+      .update(activities)
+      .set({
+        dueDate: d.dueDate,
+        dueTime: d.dueTime ?? null,
+        timezone: d.timezone ?? null,
+        dueAt: academicInstant(
+          d.dueDate,
+          d.dueTime ?? null,
+          d.timezone ?? null,
+        ),
+        revision: a.revision + 1,
+        updatedAt: this.now().toISOString(),
+      })
+      .where(eq(activities.id, a.id))
+      .returning();
+    await this.setFixed(ctx, next, d.evaluationEndAt ?? null);
+    await ctx.db.execute(
+      sql`insert into app.academic_date_revisions(id,owner_id,activity_id,activity_revision,before_value,after_value,source,confirmed_at) values(${randomUUID()},${owner},${a.id},${next.revision},${JSON.stringify(row.before_value)}::jsonb,${JSON.stringify(row.after_value)}::jsonb,${JSON.stringify(row.source)}::jsonb,${this.now().toISOString()})`,
+    );
+    await ctx.db.execute(
+      sql`update app.date_change_proposals set state='applied' where owner_id=${owner} and id=${id}`,
+    );
+    await this.touch(ctx, a.periodId);
+    return {
+      status: 200,
+      data: await this.activityDto(ctx, next),
+      etag: `"activity-${next.revision}"`,
+    };
   }
 }

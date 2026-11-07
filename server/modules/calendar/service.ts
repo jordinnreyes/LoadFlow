@@ -585,6 +585,7 @@ export class CalendarService {
         covered: [],
         issues: ["CALENDAR_NOT_CONNECTED"],
         lastFetchedAt: null,
+        validUntil: null,
       };
     const sources = (await this.sourceRows(ctx)).filter((s) => s.selected);
     const snapshots = await query<Omit<StoredSnapshot, "intervals">>(
@@ -639,6 +640,7 @@ export class CalendarService {
                     : (c.safe_error ?? "CALENDAR_COVERAGE_UNKNOWN"),
             ],
       lastFetchedAt: coverage.lastFetchedAt,
+      validUntil: coverage.validUntil,
     };
   }
   getBusy(owner: string, from: string, to: string) {

@@ -1,39 +1,16 @@
 import { Temporal } from "@js-temporal/polyfill";
 import type { AvailabilityConfig } from "../../../packages/contracts/availability.js";
 import { invalid, timezone, civilDate } from "../academics/policy.js";
-export type Span = { start: number; end: number };
-export function union(spans: Span[]): Span[] {
-  const result: Span[] = [];
-  for (const span of spans
-    .filter(
-      (s) =>
-        Number.isFinite(s.start) && Number.isFinite(s.end) && s.end > s.start,
-    )
-    .map((s) => ({ ...s }))
-    .sort((a, b) => a.start - b.start || a.end - b.end)) {
-    const last = result.at(-1);
-    if (last && span.start <= last.end) last.end = Math.max(last.end, span.end);
-    else result.push(span);
-  }
-  return result;
-}
-export function subtract(windows: Span[], busy: Span[]): Span[] {
-  const occupied = union(busy),
-    result: Span[] = [];
-  for (const window of union(windows)) {
-    let cursor = window.start;
-    for (const block of occupied) {
-      if (block.end <= cursor) continue;
-      if (block.start >= window.end) break;
-      if (block.start > cursor)
-        result.push({ start: cursor, end: Math.min(block.start, window.end) });
-      cursor = Math.max(cursor, block.end);
-      if (cursor >= window.end) break;
-    }
-    if (cursor < window.end) result.push({ start: cursor, end: window.end });
-  }
-  return result;
-}
+import {
+  union,
+  subtract,
+  type Span,
+} from "../../../packages/planning-core/intervals.js";
+export {
+  union,
+  subtract,
+  type Span,
+} from "../../../packages/planning-core/intervals.js";
 export const isoSpans = (spans: Span[]) =>
   spans.map((s) => ({
     startAt: new Date(s.start).toISOString(),

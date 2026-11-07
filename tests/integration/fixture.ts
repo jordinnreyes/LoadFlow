@@ -13,6 +13,7 @@ import type {
 import { buildApp } from "../../server/app.js";
 import { CalendarService } from "../../server/modules/calendar/service.js";
 import type { CalendarProvider } from "../../server/modules/calendar/provider.js";
+import { PlanningService } from "../../server/modules/planning/service.js";
 import type { ImportService } from "../../server/modules/imports/service.js";
 export async function fixture(
   now = new Date("2030-01-01T00:00:00Z"),
@@ -43,7 +44,11 @@ export async function fixture(
       return p.userId;
     },
   };
-  const academics = new Academics(db.pool, () => now);
+  const academics = new Academics(
+    db.pool,
+    () => now,
+    `test-planning-${randomUUID()}`,
+  );
   const identity = new Identity(
     ids.pool,
     provider,
@@ -61,8 +66,9 @@ export async function fixture(
     `test-${randomUUID()}`,
   );
   const imports = importService?.(identity);
-  const app = await buildApp({ identity, calendar, imports });
-  async function client() {
+  const planning = new PlanningService(identity, calendar);
+  const app = await buildApp({ identity, calendar, imports, planning });
+  async function client(tokenLifetimeSeconds = 3600) {
     const { data, error } = await admin.auth.admin.createUser({
       email: `f2-${randomUUID()}@fixture.test`,
       email_confirm: true,
@@ -74,7 +80,7 @@ export async function fixture(
       displayName: "F2 fixture",
       accessToken: randomUUID(),
       refreshToken: randomUUID(),
-      expiresAt: Math.floor(now.getTime() / 1000) + 3600,
+      expiresAt: Math.floor(now.getTime() / 1000) + tokenLifetimeSeconds,
       authSessionId: randomUUID(),
     };
     proofs.set(proof.accessToken, proof);
@@ -114,6 +120,7 @@ export async function fixture(
     academics,
     calendar,
     imports,
+    planning,
     client,
     request,
     now,

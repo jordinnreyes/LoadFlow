@@ -31,6 +31,7 @@ export const periods = app.table("academic_periods", {
   timezone: text("timezone"),
   isDefault: boolean("is_default").notNull(),
   workspaceRevision: integer("workspace_revision").notNull(),
+  planRevision: integer("plan_revision").default(0).notNull(),
   revision: integer("revision").notNull(),
   createdAt: instant("created_at").notNull(),
   updatedAt: instant("updated_at").notNull(),

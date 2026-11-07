@@ -132,7 +132,7 @@ export class AvailabilityService {
       configured: data.configuration !== null,
       ...data,
       workspaceRevision: period.workspaceRevision,
-      planningState: "not_generated" as const,
+      planningState: await this.academics.planningState(ctx, id),
     };
   }
   get(owner: string, id: string) {
@@ -147,7 +147,7 @@ export class AvailabilityService {
     await this.academics.touch(ctx, id);
     const period = await this.academics.requirePeriod(ctx, id);
     await ctx.db.execute(
-      sql`insert into app.planning_input_changes(id,owner_id,period_id,workspace_revision,kind,summary) values(${randomUUID()},${ctx.owner},${id},${period.workspaceRevision},${kind},${JSON.stringify({ ...summary, policyVersion: INPUT_POLICY_VERSION, planningState: "not_generated", sessionsChanged: false })}::jsonb)`,
+      sql`insert into app.planning_input_changes(id,owner_id,period_id,workspace_revision,kind,summary) values(${randomUUID()},${ctx.owner},${id},${period.workspaceRevision},${kind},${JSON.stringify({ ...summary, policyVersion: INPUT_POLICY_VERSION, planningState: await this.academics.planningState(ctx, id), sessionsChanged: false })}::jsonb)`,
     );
   }
   async write(
@@ -394,7 +394,14 @@ export class AvailabilityService {
         });
         return {
           status: 200,
-          data: { deleted: true, id, planningState: "not_generated" },
+          data: {
+            deleted: true,
+            id,
+            planningState: await this.academics.planningState(
+              ctx,
+              old.period_id,
+            ),
+          },
         };
       },
     );
@@ -434,148 +441,170 @@ export class AvailabilityService {
   }
   capacity(owner: string, id: string, from: string, to: string) {
     return this.academics.read(owner, async (ctx) => {
-      dates(from, to);
-      const base = await this.view(ctx, id),
-        c = base.configuration,
-        now = this.academics.now();
-      const result: CapacityDto = {
-        periodId: id,
-        workspaceRevision: base.workspaceRevision,
-        availabilityRevision: base.revision,
-        from,
-        to,
-        timezone: c?.timezone ?? null,
-        asOf: now.toISOString(),
-        certainty: "unknown",
-        source: "manual",
-        availableMinutes: null,
-        provisionalMinutes: 0,
-        available: [],
-        occupied: [],
-        issues: [],
-        planningState: "not_generated",
-      };
-      if (!c) {
-        result.issues.push({ code: "AVAILABILITY_UNKNOWN" });
-        return result;
-      }
-      const start = dayBoundary(from, c.timezone),
-        end = dayBoundary(to, c.timezone),
-        resolved = resolveWindows(c, from, to, now);
-      const calendar = this.calendar?.();
-      const external = calendar
-        ? await calendar.busy(
-            ctx,
-            new Date(start).toISOString(),
-            new Date(end).toISOString(),
-          )
-        : null;
-      const connection = calendar ? await calendar.connectionRow(ctx) : null;
-      const manualRows = await query<{
-        range_start: string;
-        range_end: string;
-        confirmed_at: Date;
-      }>(
-        ctx,
-        sql`select range_start,range_end,confirmed_at from app.manual_coverage where owner_id=${owner} and period_id=${id}`,
-      );
-      const uncertainAfter = connection
-        ? connection.state !== "active"
-          ? new Date(connection.changed_at).getTime()
-          : connection.safe_error
-            ? new Date(
-                connection.last_attempt_at ?? connection.changed_at,
-              ).getTime()
-            : external?.connection.state === "stale"
-              ? Math.max(
-                  new Date(connection.changed_at).getTime(),
-                  connection.last_success_at
-                    ? new Date(connection.last_success_at).getTime() + 1800000
-                    : 0,
-                )
-              : external?.coverage !== "complete"
-                ? new Date(
-                    connection.last_attempt_at ?? connection.changed_at,
-                  ).getTime()
-                : 0
-        : 0;
-      const occupied = await query<{ start_at: Date; end_at: Date }>(
-        ctx,
-        sql`select start_at,end_at from app.manual_commitments where owner_id=${owner} and period_id=${id} and start_at<${new Date(end).toISOString()}::timestamptz and end_at>${new Date(start).toISOString()}::timestamptz union all select f.start_at,f.end_at from app.fixed_evaluations f join app.activities a on a.id=f.activity_id and a.owner_id=f.owner_id where f.owner_id=${owner} and a.period_id=${id} and f.start_at<${new Date(end).toISOString()}::timestamptz and f.end_at>${new Date(start).toISOString()}::timestamptz`,
-      );
-      const busy: Span[] = union(
-        [
-          ...occupied,
-          ...(external?.busy ?? []).map((b) => ({
-            start_at: new Date(b.startAt),
-            end_at: new Date(b.endAt),
-          })),
-        ].map((b) => ({
-          start: Math.max(
-            start,
-            Math.floor(new Date(b.start_at).getTime() / 60000) * 60000,
-          ),
-          end: Math.min(
-            end,
-            Math.ceil(new Date(b.end_at).getTime() / 60000) * 60000,
-          ),
-        })),
-      );
-      const available = subtract(resolved.windows, busy);
-      const verified: Span[] = (external?.covered ?? []).map((b) => ({
-        start: Date.parse(b.startAt),
-        end: Date.parse(b.endAt),
-      }));
-      for (const date of dates(from, to))
-        if (
-          manualRows.some(
-            (r) =>
-              r.range_start <= date &&
-              date < r.range_end &&
-              new Date(r.confirmed_at).getTime() >= uncertainAfter,
-          )
-        )
-          verified.push({
-            start: dayBoundary(date, c.timezone),
-            end: dayBoundary(nextDate(date), c.timezone),
-          });
-      result.issues.push(...resolved.issues);
-      for (const date of dates(from, to)) {
-        const dstart = dayBoundary(date, c.timezone),
-          dend = dayBoundary(nextDate(date), c.timezone);
-        if (
-          subtract(
-            resolved.windows
-              .filter((w) => w.start < dend && w.end > dstart)
-              .map((w) => ({
-                start: Math.max(dstart, w.start),
-                end: Math.min(dend, w.end),
-              })),
-            verified,
-          ).length > 0
-        )
-          result.issues.push({
-            code: connection
-              ? "SOURCE_COVERAGE_UNKNOWN"
-              : "MANUAL_COVERAGE_MISSING",
-            date,
-          });
-      }
-      result.source = connection ? "calendar_and_manual" : "manual";
-      result.certainty = result.issues.length
-        ? available.length
-          ? "partial"
-          : "unknown"
-        : "known";
-      result.available = isoSpans(available);
-      result.occupied = isoSpans(busy);
-      result.provisionalMinutes = available.reduce(
-        (n, s) => n + (s.end - s.start) / 60000,
-        0,
-      );
-      if (result.certainty === "known")
-        result.availableMinutes = result.provisionalMinutes;
+      const {
+        verified: _verified,
+        sourceValidUntil: _validUntil,
+        ...result
+      } = await this.capacityIn(ctx, id, from, to);
       return result;
     });
+  }
+  async capacityIn(
+    ctx: Context,
+    id: string,
+    from: string,
+    to: string,
+    excludeEvaluationId: string | null = null,
+  ) {
+    const owner = ctx.owner;
+    dates(from, to);
+    const base = await this.view(ctx, id),
+      c = base.configuration,
+      now = this.academics.now();
+    const result: CapacityDto & {
+      verified: { startAt: string; endAt: string }[];
+      sourceValidUntil: number | null;
+    } = {
+      verified: [],
+      sourceValidUntil: null,
+      periodId: id,
+      workspaceRevision: base.workspaceRevision,
+      availabilityRevision: base.revision,
+      from,
+      to,
+      timezone: c?.timezone ?? null,
+      asOf: now.toISOString(),
+      certainty: "unknown",
+      source: "manual",
+      availableMinutes: null,
+      provisionalMinutes: 0,
+      available: [],
+      occupied: [],
+      issues: [],
+      planningState: base.planningState,
+    };
+    if (!c) {
+      result.issues.push({ code: "AVAILABILITY_UNKNOWN" });
+      return result;
+    }
+    const start = dayBoundary(from, c.timezone),
+      end = dayBoundary(to, c.timezone),
+      resolved = resolveWindows(c, from, to, now);
+    const calendar = this.calendar?.();
+    const external = calendar
+      ? await calendar.busy(
+          ctx,
+          new Date(start).toISOString(),
+          new Date(end).toISOString(),
+        )
+      : null;
+    const connection = calendar ? await calendar.connectionRow(ctx) : null;
+    const manualRows = await query<{
+      range_start: string;
+      range_end: string;
+      confirmed_at: Date;
+    }>(
+      ctx,
+      sql`select range_start,range_end,confirmed_at from app.manual_coverage where owner_id=${owner} and period_id=${id}`,
+    );
+    const uncertainAfter = connection
+      ? connection.state !== "active"
+        ? new Date(connection.changed_at).getTime()
+        : connection.safe_error
+          ? new Date(
+              connection.last_attempt_at ?? connection.changed_at,
+            ).getTime()
+          : external?.connection.state === "stale"
+            ? Math.max(
+                new Date(connection.changed_at).getTime(),
+                connection.last_success_at
+                  ? new Date(connection.last_success_at).getTime() + 1800000
+                  : 0,
+              )
+            : external?.coverage !== "complete"
+              ? new Date(
+                  connection.last_attempt_at ?? connection.changed_at,
+                ).getTime()
+              : 0
+      : 0;
+    const occupied = await query<{ start_at: Date; end_at: Date }>(
+      ctx,
+      sql`select start_at,end_at from app.manual_commitments where owner_id=${owner} and period_id=${id} and start_at<${new Date(end).toISOString()}::timestamptz and end_at>${new Date(start).toISOString()}::timestamptz union all select f.start_at,f.end_at from app.fixed_evaluations f join app.activities a on a.id=f.activity_id and a.owner_id=f.owner_id where f.owner_id=${owner} and a.period_id=${id} and (${excludeEvaluationId}::uuid is null or a.id<>${excludeEvaluationId}::uuid) and f.start_at<${new Date(end).toISOString()}::timestamptz and f.end_at>${new Date(start).toISOString()}::timestamptz`,
+    );
+    const busy: Span[] = union(
+      [
+        ...occupied,
+        ...(external?.busy ?? []).map((b) => ({
+          start_at: new Date(b.startAt),
+          end_at: new Date(b.endAt),
+        })),
+      ].map((b) => ({
+        start: Math.max(
+          start,
+          Math.floor(new Date(b.start_at).getTime() / 60000) * 60000,
+        ),
+        end: Math.min(
+          end,
+          Math.ceil(new Date(b.end_at).getTime() / 60000) * 60000,
+        ),
+      })),
+    );
+    const available = subtract(resolved.windows, busy);
+    const verified: Span[] = (external?.covered ?? []).map((b) => ({
+      start: Date.parse(b.startAt),
+      end: Date.parse(b.endAt),
+    }));
+    for (const date of dates(from, to))
+      if (
+        manualRows.some(
+          (r) =>
+            r.range_start <= date &&
+            date < r.range_end &&
+            new Date(r.confirmed_at).getTime() >= uncertainAfter,
+        )
+      )
+        verified.push({
+          start: dayBoundary(date, c.timezone),
+          end: dayBoundary(nextDate(date), c.timezone),
+        });
+    result.issues.push(...resolved.issues);
+    for (const date of dates(from, to)) {
+      const dstart = dayBoundary(date, c.timezone),
+        dend = dayBoundary(nextDate(date), c.timezone);
+      if (
+        subtract(
+          resolved.windows
+            .filter((w) => w.start < dend && w.end > dstart)
+            .map((w) => ({
+              start: Math.max(dstart, w.start),
+              end: Math.min(dend, w.end),
+            })),
+          verified,
+        ).length > 0
+      )
+        result.issues.push({
+          code: connection
+            ? "SOURCE_COVERAGE_UNKNOWN"
+            : "MANUAL_COVERAGE_MISSING",
+          date,
+        });
+    }
+    result.source = connection ? "calendar_and_manual" : "manual";
+    result.certainty = result.issues.length
+      ? available.length
+        ? "partial"
+        : "unknown"
+      : "known";
+    result.verified = isoSpans(union(verified));
+    result.sourceValidUntil = external?.validUntil ?? null;
+    result.available = isoSpans(available);
+    result.occupied = isoSpans(busy);
+    result.provisionalMinutes = available.reduce(
+      (n, s) => n + (s.end - s.start) / 60000,
+      0,
+    );
+    if (result.certainty === "known")
+      result.availableMinutes = result.provisionalMinutes;
+    return result;
   }
 }

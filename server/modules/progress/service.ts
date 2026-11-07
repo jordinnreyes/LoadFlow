@@ -113,19 +113,33 @@ export function reportProgress(
         fulfillmentState: d.fulfillmentState,
         effectiveCompletionDate: d.effectiveCompletionDate,
       });
-      await ctx.db
-        .insert(progressHistory)
-        .values({
-          id: randomUUID(),
-          ownerId: owner,
-          activityId: id,
-          activityRevision: next.revision,
-          before: snapshot(old),
-          after: snapshot(dto),
-          recordedAt: service.now().toISOString(),
-        });
+      await ctx.db.insert(progressHistory).values({
+        id: randomUUID(),
+        ownerId: owner,
+        activityId: id,
+        activityRevision: next.revision,
+        before: snapshot(old),
+        after: snapshot(dto),
+        recordedAt: service.now().toISOString(),
+      });
+      if (
+        (prep === "done" && a.type !== "Entrega grupal") ||
+        (a.type === "Entrega grupal" && next.fulfillmentState === "fulfilled")
+      ) {
+        await ctx.db
+          .execute(sql`update app.sessions set state='cancelled',cancel_reason='progress_closed',revision=revision+1
+          where owner_id=${owner} and activity_id=${id} and state='planned' and not fixed
+          and start_at>=${service.now().toISOString()}::timestamptz`);
+      }
       await service.touch(ctx, a.periodId);
-      return { status: 200, data: dto, etag: `"activity-${next.revision}"` };
+      return {
+        status: 200,
+        data: {
+          ...dto,
+          planningState: await service.planningState(ctx, a.periodId),
+        },
+        etag: `"activity-${next.revision}"`,
+      };
     },
   );
 }

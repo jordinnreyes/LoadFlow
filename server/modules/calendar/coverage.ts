@@ -30,6 +30,7 @@ export function snapshotCoverage(
   const reference: Span[] = [];
   let lastFetchedAt: string | null = null;
   let anyFresh = false;
+  let validUntil: number | null = null;
   for (const id of sourceIds) {
     let consumed: Span[] = [],
       fresh: Span[] = [];
@@ -67,6 +68,9 @@ export function snapshotCoverage(
         now.getTime() - timestamp <= CALENDAR_POLICY.staleAfterSeconds * 1000
       ) {
         fresh.push(...remaining);
+        const expires = timestamp + CALENDAR_POLICY.staleAfterSeconds * 1000;
+        validUntil =
+          validUntil === null ? expires : Math.min(validUntil, expires);
         anyFresh ||= remaining.length > 0;
       }
     }
@@ -79,5 +83,11 @@ export function snapshotCoverage(
       : anyFresh
         ? "partial"
         : "unknown";
-  return { busy: union(reference), covered, coverage, lastFetchedAt };
+  return {
+    busy: union(reference),
+    covered,
+    coverage,
+    lastFetchedAt,
+    validUntil,
+  };
 }

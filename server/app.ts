@@ -17,6 +17,8 @@ import { CalendarService } from "./modules/calendar/service.js";
 import { calendarRoutes } from "./modules/calendar/routes.js";
 import { importsRoutes } from "./modules/imports/routes.js";
 import type { ImportService } from "./modules/imports/service.js";
+import { PlanningService } from "./modules/planning/service.js";
+import { planningRoutes } from "./modules/planning/routes.js";
 import { documentProtocol } from "./openapi.js";
 
 export async function buildApp(
@@ -26,6 +28,7 @@ export async function buildApp(
     identity?: Identity;
     calendar?: CalendarService;
     imports?: ImportService;
+    planning?: PlanningService;
   } = {},
 ) {
   assertRuntime();
@@ -179,6 +182,12 @@ export async function buildApp(
     options.calendar ?? new CalendarService(getIdentity());
   await availabilityRoutes(app, getIdentity, getCalendar);
   await calendarRoutes(app, getIdentity, getCalendar);
+  let planning = options.planning;
+  await planningRoutes(
+    app,
+    getIdentity,
+    () => (planning ??= new PlanningService(getIdentity(), getCalendar())),
+  );
   await app.register((scope, _options, done) => {
     importsRoutes(scope, getIdentity, () => options.imports).then(
       () => done(),

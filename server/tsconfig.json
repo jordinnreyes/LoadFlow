@@ -5,5 +5,5 @@
     "esModuleInterop": true, "skipLibCheck": true, "types": ["node"],
     "resolveJsonModule": true
   },
-  "include": ["./**/*.ts", "../packages/contracts/**/*.ts", "../tests/backend/**/*.ts", "../tests/integration/**/*.ts", "../scripts/backend/**/*.ts"]
+  "include": ["./**/*.ts", "../packages/contracts/**/*.ts", "../packages/planning-core/**/*.ts", "../tests/backend/**/*.ts", "../tests/integration/**/*.ts", "../scripts/backend/**/*.ts"]
 }

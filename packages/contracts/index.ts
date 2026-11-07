@@ -26,6 +26,10 @@ export const ErrorResponse = Type.Object(
   },
   strict,
 );
+export const PlanningState = Type.Union([
+  Type.Literal("not_generated"), Type.Literal("current"), Type.Literal("stale"),
+]);
+export type PlanningStatus = Static<typeof PlanningState>;
 export const Health = Type.Object({ status: Type.Literal("ok") }, strict);
 export const Priority = Type.Union(
   ["Alta", "Media", "Baja"].map((x) => Type.Literal(x)),

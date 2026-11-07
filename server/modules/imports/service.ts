@@ -682,7 +682,7 @@ export class ImportService {
           data: {
             revision: r.revision + 1,
             items,
-            planningState: "not_generated",
+            planningState: await this.academics.planningState(ctx, r.period_id),
           },
           etag: `"import-${r.revision + 1}"`,
         };

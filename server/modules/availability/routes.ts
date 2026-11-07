@@ -1,3 +1,4 @@
+import { PlanningState } from "../../../packages/contracts/index.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { Type } from "@sinclair/typebox";
 import {
@@ -218,7 +219,7 @@ export async function availabilityRoutes(
             {
               deleted: Type.Literal(true),
               id: Id,
-              planningState: Type.Literal("not_generated"),
+              planningState: PlanningState,
             },
             strict,
           ),

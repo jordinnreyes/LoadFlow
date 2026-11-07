@@ -1,3 +1,4 @@
+import { PlanningState } from "./index.js";
 import { Type, type Static } from "@sinclair/typebox";
 import {
   strict,
@@ -66,7 +67,7 @@ export const Period = Type.Object(
     revision: Revision,
     workspaceRevision: Revision,
     isDefault: Type.Boolean(),
-    planningState: Type.Literal("not_generated"),
+    planningState: PlanningState,
   },
   strict,
 );
@@ -144,7 +145,7 @@ export const Activity = Type.Object(
     preparationState: Preparation,
     fulfillmentState: Fulfillment,
     revision: Revision,
-    planningState: Type.Literal("not_generated"),
+    planningState: PlanningState,
   },
   strict,
 );

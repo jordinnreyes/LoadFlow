@@ -1,3 +1,4 @@
+import { PlanningState } from "../../../packages/contracts/index.js";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { Type, type Static } from "@sinclair/typebox";
 import {
@@ -55,7 +56,7 @@ const Proposal = Type.Object(
     source: C.DateSource,
     state: Type.String(),
     applied: Type.Boolean(),
-    planningState: Type.Literal("not_generated"),
+    planningState: PlanningState,
   },
   strict,
 );

@@ -1,3 +1,4 @@
+import { PlanningState } from "./index.js";
 import { Type, type Static } from "@sinclair/typebox";
 import { CivilDate, Id, Minutes, strict } from "./index.js";
 export const Interval = Type.Object(
@@ -74,7 +75,7 @@ export const Availability = Type.Object(
     revision: Type.Integer({ minimum: 0 }),
     workspaceRevision: Type.Integer({ minimum: 1 }),
     configuration: Type.Union([AvailabilityInput, Type.Null()]),
-    planningState: Type.Literal("not_generated"),
+    planningState: PlanningState,
   },
   strict,
 );
@@ -157,7 +158,7 @@ export const Capacity = Type.Object(
         strict,
       ),
     ),
-    planningState: Type.Literal("not_generated"),
+    planningState: PlanningState,
   },
   strict,
 );

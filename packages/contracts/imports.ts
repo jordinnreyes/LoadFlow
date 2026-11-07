@@ -1,3 +1,4 @@
+import { PlanningState } from "./index.js";
 import { Type, type Static } from "@sinclair/typebox";
 import {
   ActivityType,
@@ -183,7 +184,7 @@ export const Confirmed = Type.Object(
         strict,
       ),
     ),
-    planningState: Type.Literal("not_generated"),
+    planningState: PlanningState,
   },
   strict,
 );

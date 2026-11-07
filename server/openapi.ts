@@ -39,9 +39,13 @@ export const documentProtocol: SwaggerTransformObject = (document) => {
           path.endsWith("/date-change-proposals") ||
           path.endsWith("/apply") ||
           path.endsWith("/availability/copy") ||
-          ["confirmImport", "retryImport", "cancelImport"].includes(
-            operation.operationId ?? "",
-          )
+          [
+            "confirmImport",
+            "retryImport",
+            "cancelImport",
+            "previewStudyPlan",
+            "confirmGroupEquivalence",
+          ].includes(operation.operationId ?? "")
         )
           headers.push("If-Match");
       }
