@@ -159,16 +159,27 @@ export const ProgressInput = Type.Object(
   },
   strict,
 );
+const ManualDateSource = Type.Object(
+  {
+    kind: Type.Literal("manual"),
+    description: Type.Optional(Type.String({ maxLength: 500 })),
+  },
+  strict,
+);
+export const ImportedDateSource = Type.Object(
+  {
+    kind: Type.Literal("import"),
+    format: Type.Union([Type.Literal("pdf"), Type.Literal("xlsx")]),
+    unit: Type.Integer({ minimum: 1 }),
+    row: Type.Integer({ minimum: 1 }),
+  },
+  strict,
+);
+export const DateSource = Type.Union([ManualDateSource, ImportedDateSource]);
 export const DateProposalInput = Type.Object(
   {
     ...temporalFields,
-    source: Type.Object(
-      {
-        kind: Type.Literal("manual"),
-        description: Type.Optional(Type.String({ maxLength: 500 })),
-      },
-      strict,
-    ),
+    source: ManualDateSource,
   },
   strict,
 );
@@ -206,5 +217,7 @@ export const pageOf = (
 export type CreateActivity = Static<typeof ActivityInput>;
 export type EditActivity = Static<typeof ActivityPatch>;
 export type ReportProgress = Static<typeof ProgressInput>;
-export type DateChange = Static<typeof DateProposalInput>;
+export type DateChange = Omit<Static<typeof DateProposalInput>, "source"> & {
+  source: Static<typeof DateSource>;
+};
 export type ActivityDto = Static<typeof Activity>;

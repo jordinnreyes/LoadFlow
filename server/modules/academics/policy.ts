@@ -51,6 +51,15 @@ export function utcInstant(value: string | null) {
     );
   }
 }
+export function effectivePriority<T>(
+  mode: string,
+  override: T | null,
+  inherited: T | null,
+): T | null {
+  if (mode === "override") return override;
+  if (mode === "inherit") return inherited;
+  return null;
+}
 export function effortState(
   estimated: number | null,
   real: number | null,

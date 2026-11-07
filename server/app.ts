@@ -15,6 +15,8 @@ import { academicsRoutes } from "./modules/academics/routes.js";
 import { availabilityRoutes } from "./modules/availability/routes.js";
 import { CalendarService } from "./modules/calendar/service.js";
 import { calendarRoutes } from "./modules/calendar/routes.js";
+import { importsRoutes } from "./modules/imports/routes.js";
+import type { ImportService } from "./modules/imports/service.js";
 import { documentProtocol } from "./openapi.js";
 
 export async function buildApp(
@@ -23,6 +25,7 @@ export async function buildApp(
     logger?: boolean;
     identity?: Identity;
     calendar?: CalendarService;
+    imports?: ImportService;
   } = {},
 ) {
   assertRuntime();
@@ -176,6 +179,12 @@ export async function buildApp(
     options.calendar ?? new CalendarService(getIdentity());
   await availabilityRoutes(app, getIdentity, getCalendar);
   await calendarRoutes(app, getIdentity, getCalendar);
+  await app.register((scope, _options, done) => {
+    importsRoutes(scope, getIdentity, () => options.imports).then(
+      () => done(),
+      done,
+    );
+  });
   app.get("/api/v1/openapi.json", { schema: { hide: true } }, async () =>
     app.swagger(),
   );

@@ -13,9 +13,11 @@ import type {
 import { buildApp } from "../../server/app.js";
 import { CalendarService } from "../../server/modules/calendar/service.js";
 import type { CalendarProvider } from "../../server/modules/calendar/provider.js";
+import type { ImportService } from "../../server/modules/imports/service.js";
 export async function fixture(
   now = new Date("2030-01-01T00:00:00Z"),
   calendarProvider?: CalendarProvider,
+  importService?: (identity: Identity) => ImportService,
 ) {
   const db = database(process.env.DATABASE_URL!),
     ids = database(process.env.IDENTITY_DATABASE_URL!);
@@ -58,7 +60,8 @@ export async function fixture(
     calendarProvider,
     `test-${randomUUID()}`,
   );
-  const app = await buildApp({ identity, calendar });
+  const imports = importService?.(identity);
+  const app = await buildApp({ identity, calendar, imports });
   async function client() {
     const { data, error } = await admin.auth.admin.createUser({
       email: `f2-${randomUUID()}@fixture.test`,
@@ -110,6 +113,7 @@ export async function fixture(
     identity,
     academics,
     calendar,
+    imports,
     client,
     request,
     now,

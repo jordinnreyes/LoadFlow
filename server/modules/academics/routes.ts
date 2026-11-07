@@ -52,13 +52,7 @@ const Proposal = Type.Object(
     baseWorkspaceRevision: Type.Integer({ minimum: 1 }),
     before: Snapshot,
     after: Snapshot,
-    source: Type.Object(
-      {
-        kind: Type.Literal("manual"),
-        description: Type.Optional(Type.String()),
-      },
-      strict,
-    ),
+    source: C.DateSource,
     state: Type.String(),
     applied: Type.Boolean(),
     planningState: Type.Literal("not_generated"),
@@ -102,13 +96,7 @@ const DateHistory = Type.Object(
           activityRevision: Type.Integer(),
           before: Snapshot,
           after: Snapshot,
-          source: Type.Object(
-            {
-              kind: Type.Literal("manual"),
-              description: Type.Optional(Type.String()),
-            },
-            strict,
-          ),
+          source: C.DateSource,
           recordedAt: C.Instant,
         },
         strict,

@@ -21,6 +21,7 @@ import {
   academicInstant,
   utcInstant,
   effortState,
+  effectivePriority,
   requireRevision,
   confirmReopening,
   completionDate,
@@ -487,12 +488,11 @@ export class Academics {
       dependencies: deps.map((x) => x.predecessor_id),
       priorityMode: a.priorityMode,
       priorityOverride: a.priorityOverride,
-      effectivePriority:
-        a.priorityMode === "override"
-          ? a.priorityOverride
-          : a.priorityMode === "inherit"
-            ? (rules[0]?.priority ?? null)
-            : null,
+      effectivePriority: effectivePriority(
+        a.priorityMode,
+        a.priorityOverride,
+        rules[0]?.priority ?? null,
+      ),
       operatingMinutes: a.operatingMinutes,
       effortOrigin: (estimate?.origin as "manual" | "corrected") ?? null,
       realTotalMinutes: p?.realTotalMinutes ?? null,
@@ -640,109 +640,112 @@ export class Academics {
       `activity:${id ?? "new"}`,
       key,
       { input, version },
-      async (ctx) => {
-        const existing = id ? await this.requireActivity(ctx, id) : undefined;
-        if (existing) requireRevision(version, "activity", existing.revision);
-        const full = input as CreateActivity;
-        const periodId = existing?.periodId ?? full.periodId;
-        await this.requirePeriod(ctx, periodId);
-        const courseId =
-          input.courseId === undefined
-            ? (existing?.courseId ?? null)
-            : input.courseId;
-        if (courseId) await this.requireCourse(ctx, courseId, periodId);
-        const kind = input.type ?? existing!.type;
-        const minutes =
-          input.operatingMinutes === undefined
-            ? (existing?.operatingMinutes ?? null)
-            : input.operatingMinutes;
-        if (kind === "Entrega grupal" && minutes !== null)
-          throw invalid(
-            "GROUP_NO_INDIVIDUAL_EFFORT",
-            "El proyecto grupal no recibe una estimación individual.",
-          );
-        const mode = input.priorityMode ?? existing?.priorityMode ?? "inherit";
-        const priority =
-          input.priorityOverride === undefined
-            ? (existing?.priorityOverride ?? null)
-            : input.priorityOverride;
-        if ((mode === "override") !== (priority !== null))
-          throw invalid(
-            "INVALID_PRIORITY",
-            "Confirma una prioridad para la excepción o usa herencia/sin declarar.",
-          );
-        const date = existing?.dueDate ?? civilDate(full.dueDate);
-        const time = existing?.dueTime?.slice(0, 5) ?? full.dueTime ?? null;
-        const zone = existing?.timezone ?? timezone(full.timezone ?? null);
-        const data = {
-          courseId,
-          title: clean(input.title ?? existing!.title),
-          type: kind,
-          description: input.description ?? existing?.description ?? "",
-          operatingMinutes: minutes,
-          priorityMode: mode,
-          priorityOverride: priority,
-          revision: (existing?.revision ?? 0) + 1,
-          updatedAt: this.now().toISOString(),
-        };
-        const [next] = existing
-          ? await ctx.db
-              .update(activities)
-              .set(data)
-              .where(eq(activities.id, existing.id))
-              .returning()
-          : await ctx.db
-              .insert(activities)
-              .values({
-                ...data,
-                id: randomUUID(),
-                ownerId: owner,
-                periodId,
-                dueDate: date,
-                dueTime: time,
-                timezone: zone,
-                dueAt: academicInstant(date, time, zone),
-                allowedStartAt: utcInstant(full.allowedStartAt ?? null),
-                divisibility: full.divisibility ?? "unknown",
-                preparationState: "new",
-                fulfillmentState: "pending",
-                confirmedAt: this.now().toISOString(),
-                createdAt: this.now().toISOString(),
-              })
-              .returning();
-        if (!existing) {
-          await ctx.db
-            .insert(progress)
-            .values({ activityId: next.id, ownerId: owner, revision: 1 });
-          await this.constraints(ctx, next, full.dependencies ?? []);
-          await this.setFixed(
-            ctx,
-            next,
-            utcInstant(full.evaluationEndAt ?? null),
-          );
-        } else if (
-          existing.type !== kind &&
-          ![
-            "Práctica calificada",
-            "Examen parcial",
-            "Examen final",
-            "Exposición",
-          ].includes(kind)
-        )
-          await this.setFixed(ctx, next, null);
-        if (
-          (!existing && minutes !== null) ||
-          (existing && existing.operatingMinutes !== minutes)
-        )
-          await this.recordEffort(ctx, next.id, minutes);
-        await this.touch(ctx, periodId);
-        return {
-          status: existing ? 200 : 201,
-          data: await this.activityDto(ctx, next),
-          etag: `"activity-${next.revision}"`,
-        };
-      },
+      (ctx) => this.saveActivityIn(ctx, input, id, version),
     );
+  }
+  async saveActivityIn(
+    ctx: Context,
+    input: CreateActivity | EditActivity,
+    id?: string,
+    version?: string,
+  ) {
+    const owner = ctx.owner;
+    const existing = id ? await this.requireActivity(ctx, id) : undefined;
+    if (existing) requireRevision(version, "activity", existing.revision);
+    const full = input as CreateActivity;
+    const periodId = existing?.periodId ?? full.periodId;
+    await this.requirePeriod(ctx, periodId);
+    const courseId =
+      input.courseId === undefined
+        ? (existing?.courseId ?? null)
+        : input.courseId;
+    if (courseId) await this.requireCourse(ctx, courseId, periodId);
+    const kind = input.type ?? existing!.type;
+    const minutes =
+      input.operatingMinutes === undefined
+        ? (existing?.operatingMinutes ?? null)
+        : input.operatingMinutes;
+    if (kind === "Entrega grupal" && minutes !== null)
+      throw invalid(
+        "GROUP_NO_INDIVIDUAL_EFFORT",
+        "El proyecto grupal no recibe una estimación individual.",
+      );
+    const mode = input.priorityMode ?? existing?.priorityMode ?? "inherit";
+    const priority =
+      input.priorityOverride === undefined
+        ? (existing?.priorityOverride ?? null)
+        : input.priorityOverride;
+    if ((mode === "override") !== (priority !== null))
+      throw invalid(
+        "INVALID_PRIORITY",
+        "Confirma una prioridad para la excepción o usa herencia/sin declarar.",
+      );
+    const date = existing?.dueDate ?? civilDate(full.dueDate);
+    const time = existing?.dueTime?.slice(0, 5) ?? full.dueTime ?? null;
+    const zone = existing?.timezone ?? timezone(full.timezone ?? null);
+    const data = {
+      courseId,
+      title: clean(input.title ?? existing!.title),
+      type: kind,
+      description: input.description ?? existing?.description ?? "",
+      operatingMinutes: minutes,
+      priorityMode: mode,
+      priorityOverride: priority,
+      revision: (existing?.revision ?? 0) + 1,
+      updatedAt: this.now().toISOString(),
+    };
+    const [next] = existing
+      ? await ctx.db
+          .update(activities)
+          .set(data)
+          .where(eq(activities.id, existing.id))
+          .returning()
+      : await ctx.db
+          .insert(activities)
+          .values({
+            ...data,
+            id: randomUUID(),
+            ownerId: owner,
+            periodId,
+            dueDate: date,
+            dueTime: time,
+            timezone: zone,
+            dueAt: academicInstant(date, time, zone),
+            allowedStartAt: utcInstant(full.allowedStartAt ?? null),
+            divisibility: full.divisibility ?? "unknown",
+            preparationState: "new",
+            fulfillmentState: "pending",
+            confirmedAt: this.now().toISOString(),
+            createdAt: this.now().toISOString(),
+          })
+          .returning();
+    if (!existing) {
+      await ctx.db
+        .insert(progress)
+        .values({ activityId: next.id, ownerId: owner, revision: 1 });
+      await this.constraints(ctx, next, full.dependencies ?? []);
+      await this.setFixed(ctx, next, utcInstant(full.evaluationEndAt ?? null));
+    } else if (
+      existing.type !== kind &&
+      ![
+        "Práctica calificada",
+        "Examen parcial",
+        "Examen final",
+        "Exposición",
+      ].includes(kind)
+    )
+      await this.setFixed(ctx, next, null);
+    if (
+      (!existing && minutes !== null) ||
+      (existing && existing.operatingMinutes !== minutes)
+    )
+      await this.recordEffort(ctx, next.id, minutes);
+    await this.touch(ctx, periodId);
+    return {
+      status: existing ? 200 : 201,
+      data: await this.activityDto(ctx, next),
+      etag: `"activity-${next.revision}"`,
+    };
   }
   listPriorities(owner: string, courseId: string) {
     return this.read(owner, async (ctx) => {
@@ -948,81 +951,83 @@ export class Academics {
       `date-proposal:${id}`,
       key,
       { input, version },
-      async (ctx) => {
-        const a = await this.requireActivity(ctx, id);
-        requireRevision(version, "activity", a.revision);
-        const period = await this.requirePeriod(ctx, a.periodId);
-        const current = await this.activityDto(ctx, a);
-        const after = {
-          dueDate: civilDate(input.dueDate),
-          dueTime:
-            input.dueTime === undefined ? current.dueTime : input.dueTime,
-          timezone: timezone(
-            input.timezone === undefined ? current.timezone : input.timezone,
-          ),
-          evaluationEndAt:
-            input.evaluationEndAt === undefined
-              ? current.evaluationEndAt
-              : utcInstant(input.evaluationEndAt),
-        };
-        if (
-          current.evaluationEndAt &&
-          input.evaluationEndAt === undefined &&
-          (after.dueDate !== current.dueDate ||
-            after.dueTime !== current.dueTime ||
-            after.timezone !== current.timezone)
-        )
-          throw invalid(
-            "EVALUATION_END_REQUIRED",
-            "Confirma también el fin del nuevo intervalo evaluativo; no se traslada automáticamente.",
-          );
-        const dueAt = academicInstant(
-          after.dueDate,
-          after.dueTime,
-          after.timezone,
-        );
-        if (
-          after.evaluationEndAt !== null &&
-          (!dueAt ||
-            new Date(after.evaluationEndAt) <= new Date(dueAt) ||
-            ![
-              "Práctica calificada",
-              "Examen parcial",
-              "Examen final",
-              "Exposición",
-            ].includes(a.type))
-        )
-          throw invalid(
-            "INVALID_EVALUATION_INTERVAL",
-            "Confirma el intervalo evaluativo completo.",
-          );
-        const before = {
-          dueDate: current.dueDate,
-          dueTime: current.dueTime,
-          timezone: current.timezone,
-          evaluationEndAt: current.evaluationEndAt,
-        };
-        const proposalId = randomUUID();
-        await ctx.db.execute(
-          sql`insert into app.date_change_proposals(id,owner_id,activity_id,base_revision,workspace_revision,before_value,after_value,source) values(${proposalId},${owner},${id},${a.revision},${period.workspaceRevision},${JSON.stringify(before)}::jsonb,${JSON.stringify(after)}::jsonb,${JSON.stringify(input.source)}::jsonb)`,
-        );
-        return {
-          status: 201,
-          data: {
-            id: proposalId,
-            activityId: id,
-            baseWorkspaceRevision: period.workspaceRevision,
-            before,
-            after,
-            source: input.source,
-            state: "pending",
-            applied: false,
-            planningState: "not_generated",
-          },
-          etag: `"workspace-${period.workspaceRevision}"`,
-        };
-      },
+      (ctx) => this.dateProposalIn(ctx, id, input, version),
     );
+  }
+  async dateProposalIn(
+    ctx: Context,
+    id: string,
+    input: DateChange,
+    version: string | undefined,
+  ) {
+    const owner = ctx.owner;
+    const a = await this.requireActivity(ctx, id);
+    requireRevision(version, "activity", a.revision);
+    const period = await this.requirePeriod(ctx, a.periodId);
+    const current = await this.activityDto(ctx, a);
+    const after = {
+      dueDate: civilDate(input.dueDate),
+      dueTime: input.dueTime === undefined ? current.dueTime : input.dueTime,
+      timezone: timezone(
+        input.timezone === undefined ? current.timezone : input.timezone,
+      ),
+      evaluationEndAt:
+        input.evaluationEndAt === undefined
+          ? current.evaluationEndAt
+          : utcInstant(input.evaluationEndAt),
+    };
+    if (
+      current.evaluationEndAt &&
+      input.evaluationEndAt === undefined &&
+      (after.dueDate !== current.dueDate ||
+        after.dueTime !== current.dueTime ||
+        after.timezone !== current.timezone)
+    )
+      throw invalid(
+        "EVALUATION_END_REQUIRED",
+        "Confirma también el fin del nuevo intervalo evaluativo; no se traslada automáticamente.",
+      );
+    const dueAt = academicInstant(after.dueDate, after.dueTime, after.timezone);
+    if (
+      after.evaluationEndAt !== null &&
+      (!dueAt ||
+        new Date(after.evaluationEndAt) <= new Date(dueAt) ||
+        ![
+          "Práctica calificada",
+          "Examen parcial",
+          "Examen final",
+          "Exposición",
+        ].includes(a.type))
+    )
+      throw invalid(
+        "INVALID_EVALUATION_INTERVAL",
+        "Confirma el intervalo evaluativo completo.",
+      );
+    const before = {
+      dueDate: current.dueDate,
+      dueTime: current.dueTime,
+      timezone: current.timezone,
+      evaluationEndAt: current.evaluationEndAt,
+    };
+    const proposalId = randomUUID();
+    await ctx.db.execute(
+      sql`insert into app.date_change_proposals(id,owner_id,activity_id,base_revision,workspace_revision,before_value,after_value,source) values(${proposalId},${owner},${id},${a.revision},${period.workspaceRevision},${JSON.stringify(before)}::jsonb,${JSON.stringify(after)}::jsonb,${JSON.stringify(input.source)}::jsonb)`,
+    );
+    return {
+      status: 201,
+      data: {
+        id: proposalId,
+        activityId: id,
+        baseWorkspaceRevision: period.workspaceRevision,
+        before,
+        after,
+        source: input.source,
+        state: "pending",
+        applied: false,
+        planningState: "not_generated",
+      },
+      etag: `"workspace-${period.workspaceRevision}"`,
+    };
   }
   getDateProposal(owner: string, id: string) {
     return this.read(owner, (ctx) => this.proposalDto(ctx, id));

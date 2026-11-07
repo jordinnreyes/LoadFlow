@@ -9,6 +9,21 @@ export const documentProtocol: SwaggerTransformObject = (document) => {
     for (const method of ["post", "put", "patch", "delete"] as const) {
       const operation = item[method];
       if (!operation) continue;
+      if (operation.operationId === "uploadImport") {
+        operation.requestBody = {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["file"],
+                additionalProperties: false,
+                properties: { file: { type: "string", format: "binary" } },
+              },
+            },
+          },
+        };
+      }
       const auth = path.startsWith("/api/v1/auth/");
       const headers = ["Origin"];
       if (
@@ -23,7 +38,10 @@ export const documentProtocol: SwaggerTransformObject = (document) => {
           method !== "post" ||
           path.endsWith("/date-change-proposals") ||
           path.endsWith("/apply") ||
-          path.endsWith("/availability/copy")
+          path.endsWith("/availability/copy") ||
+          ["confirmImport", "retryImport", "cancelImport"].includes(
+            operation.operationId ?? "",
+          )
         )
           headers.push("If-Match");
       }
