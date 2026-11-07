@@ -59,6 +59,7 @@ export class PlanningWorker {
         ),
       });
       if (
+        job.review_required ||
         !policy.allowAutomaticFlexible ||
         proposal.requiredConfirmations.length
       ) {

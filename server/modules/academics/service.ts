@@ -280,7 +280,7 @@ export class Academics {
     if (!a) throw notFound();
     return a;
   }
-  async touch(ctx: Context, periodId: string) {
+  async touch(ctx: Context, periodId: string, reviewRequired = false) {
     await ctx.db
       .update(periods)
       .set({
@@ -288,16 +288,21 @@ export class Academics {
         updatedAt: this.now().toISOString(),
       })
       .where(and(eq(periods.id, periodId), eq(periods.ownerId, ctx.owner)));
-    await this.enqueuePlanning(ctx, periodId);
+    await this.enqueuePlanning(ctx, periodId, reviewRequired);
   }
-  private async enqueuePlanning(ctx: Context, periodId: string) {
+  private async enqueuePlanning(
+    ctx: Context,
+    periodId: string,
+    reviewRequired = false,
+  ) {
     await ctx.db
-      .execute(sql`insert into app.planning_jobs(owner_id,period_id,workspace_revision,queue_name,status,run_after)
-      select owner_id,id,workspace_revision,${this.planningQueue},'queued',${this.now().toISOString()}
+      .execute(sql`insert into app.planning_jobs(owner_id,period_id,workspace_revision,queue_name,status,run_after,review_required)
+      select owner_id,id,workspace_revision,${this.planningQueue},'queued',${this.now().toISOString()},${reviewRequired}
       from app.academic_periods where owner_id=${ctx.owner} and id=${periodId} and plan_revision>0
       on conflict(owner_id,period_id) do update set workspace_revision=excluded.workspace_revision,
       queue_name=excluded.queue_name,status='queued',attempts=0,lease_token=null,lease_until=null,
-      proposal_id=null,safe_error=null,run_after=excluded.run_after`);
+      proposal_id=null,safe_error=null,run_after=excluded.run_after,
+      review_required=app.planning_jobs.review_required or excluded.review_required`);
   }
   async planningState(ctx: Context, periodId: string): Promise<PlanningStatus> {
     const [row] = await query<{ state: PlanningStatus }>(
@@ -546,7 +551,7 @@ export class Academics {
         rules[0]?.priority ?? null,
       ),
       operatingMinutes: a.operatingMinutes,
-      effortOrigin: (estimate?.origin as "manual" | "corrected") ?? null,
+      effortOrigin: (estimate?.origin as ActivityDto["effortOrigin"]) ?? null,
       realTotalMinutes: p?.realTotalMinutes ?? null,
       remainingMinutes: p?.remainingMinutes ?? null,
       pendingMinutes: state.pendingMinutes,
@@ -629,7 +634,12 @@ export class Academics {
         sql`insert into app.activity_dependencies(owner_id,period_id,activity_id,predecessor_id) values(${ctx.owner},${a.periodId},${a.id},${id})`,
       );
   }
-  async recordEffort(ctx: Context, activityId: string, minutes: number | null) {
+  async recordEffort(
+    ctx: Context,
+    activityId: string,
+    minutes: number | null,
+    source?: { id: string; origin: "suggested" | "personalized" | "corrected" },
+  ) {
     const old = (
       await ctx.db
         .select()
@@ -639,18 +649,41 @@ export class Academics {
         .limit(1)
     )[0];
     const a = await this.requireActivity(ctx, activityId);
-    await ctx.db
-      .insert(effortHistory)
-      .values({
-        id: randomUUID(),
-        ownerId: ctx.owner,
-        activityId,
-        activityRevision: a.revision,
-        minutes,
-        origin: old ? "corrected" : "manual",
-        supersedesId: old?.id ?? null,
-        confirmedAt: this.now().toISOString(),
-      });
+    await ctx.db.insert(effortHistory).values({
+      id: randomUUID(),
+      ownerId: ctx.owner,
+      activityId,
+      activityRevision: a.revision,
+      minutes,
+      origin: source?.origin ?? (old ? "corrected" : "manual"),
+      estimateId: source?.id ?? null,
+      supersedesId: old?.id ?? null,
+      confirmedAt: this.now().toISOString(),
+    });
+  }
+
+  async confirmEstimatedEffortIn(
+    ctx: Context,
+    activity: typeof activities.$inferSelect,
+    minutes: number,
+    source: { id: string; origin: "suggested" | "personalized" | "corrected" },
+  ) {
+    const [next] = await ctx.db
+      .update(activities)
+      .set({
+        operatingMinutes: minutes,
+        revision: activity.revision + 1,
+        updatedAt: this.now().toISOString(),
+      })
+      .where(eq(activities.id, activity.id))
+      .returning();
+    await this.recordEffort(ctx, activity.id, minutes, source);
+    await this.touch(ctx, activity.periodId, true);
+    return {
+      status: 200,
+      data: await this.activityDto(ctx, next),
+      etag: `"activity-${next.revision}"`,
+    };
   }
   async setFixed(
     ctx: Context,

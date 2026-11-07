@@ -5,6 +5,7 @@ import {
   ErrorResponse,
 } from "../../../packages/contracts/index.js";
 import * as C from "../../../packages/contracts/estimates.js";
+import { Activity } from "../../../packages/contracts/academics.js";
 import { DomainError } from "../../errors.js";
 import { Entitlements } from "../entitlements/service.js";
 import { header } from "../identity/routes.js";
@@ -53,50 +54,66 @@ export async function estimateRoutes(
     return estimates;
   }
 
-  app.get(
-    "/api/v1/me/estimate-consent",
+  for (const { purpose, path, read, write } of [
     {
-      schema: {
-        ...protocol,
-        operationId: "getEstimateConsent",
-        response: { ...protocol.response, 200: C.Consent },
+      purpose: "analysis",
+      path: "/api/v1/me/estimate-consent",
+      read: "getEstimateConsent",
+      write: "setEstimateConsent",
+    },
+    {
+      purpose: "personalization",
+      path: "/api/v1/me/estimate-personalization-consent",
+      read: "getEstimatePersonalizationConsent",
+      write: "setEstimatePersonalizationConsent",
+    },
+  ] as const) {
+    app.get(
+      path,
+      {
+        schema: {
+          ...protocol,
+          operationId: read,
+          response: { ...protocol.response, 200: C.Consent },
+        },
       },
-    },
-    async (r, reply) => {
-      const { access, owner } = await authorize(r);
-      const consent = await access.consent(owner);
-      return reply
-        .header("ETag", '"consent-' + consent.revision + '"')
-        .send(consent);
-    },
-  );
+      async (r, reply) => {
+        const { access, owner } = await authorize(r);
+        const consent = await access.consent(owner, purpose);
+        return reply
+          .header("ETag", '"consent-' + consent.revision + '"')
+          .send(consent);
+      },
+    );
 
-  app.put(
-    "/api/v1/me/estimate-consent",
-    {
-      schema: {
-        ...protocol,
-        operationId: "setEstimateConsent",
-        body: C.ConsentInput,
-        response: { ...protocol.response, 200: C.Consent },
+    app.put(
+      path,
+      {
+        schema: {
+          ...protocol,
+          operationId: write,
+          body: C.ConsentInput,
+          response: { ...protocol.response, 200: C.Consent },
+        },
       },
-    },
-    async (r, reply) => {
-      const { access, owner } = await authorize(r, true);
-      const input = r.body as Static<typeof C.ConsentInput>;
-      const key = header(r, "idempotency-key");
-      const consent = await access.changeConsent(
-        owner,
-        key,
-        header(r, "if-match"),
-        input.policyVersion,
-        input.granted,
-      );
-      return reply
-        .header("ETag", '"consent-' + consent.revision + '"')
-        .send(consent);
-    },
-  );
+      async (r, reply) => {
+        const { access, owner } = await authorize(r, true);
+        const input = r.body as Static<typeof C.ConsentInput>;
+        const key = header(r, "idempotency-key");
+        const consent = await access.changeConsent(
+          owner,
+          key,
+          header(r, "if-match"),
+          input.policyVersion,
+          input.granted,
+          purpose,
+        );
+        return reply
+          .header("ETag", '"consent-' + consent.revision + '"')
+          .send(consent);
+      },
+    );
+  }
 
   app.post(
     "/api/v1/activities/:id/estimates",
@@ -118,6 +135,7 @@ export async function estimateRoutes(
         header(r, "idempotency-key"),
         header(r, "if-match"),
         input.excerpt,
+        input.workloadSize,
       );
       return reply
         .header("Location", "/api/v1/estimates/" + result.id)
@@ -139,6 +157,30 @@ export async function estimateRoutes(
     async (r) => {
       const { owner } = await authorize(r);
       return configured().get(owner, id(r));
+    },
+  );
+  app.post(
+    "/api/v1/estimates/:id/apply",
+    {
+      schema: {
+        ...protocol,
+        operationId: "applyEstimate",
+        params: EntityIdParams,
+        body: C.ConfirmEstimate,
+        response: { ...protocol.response, 200: Activity },
+      },
+    },
+    async (r, reply) => {
+      const { owner } = await authorize(r, true);
+      const result = await configured().confirm(
+        owner,
+        id(r),
+        header(r, "idempotency-key"),
+        header(r, "if-match"),
+        r.body as C.ConfirmEstimate,
+      );
+      if (result.etag) reply.header("ETag", result.etag);
+      return reply.code(result.status).send(result.data);
     },
   );
 }

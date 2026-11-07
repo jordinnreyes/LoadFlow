@@ -135,6 +135,8 @@ export const Activity = Type.Object(
     effortOrigin: Type.Union([
       Type.Literal("manual"),
       Type.Literal("corrected"),
+      Type.Literal("suggested"),
+      Type.Literal("personalized"),
       Type.Null(),
     ]),
     realTotalMinutes: NullableMinutes,

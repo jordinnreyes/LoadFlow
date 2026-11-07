@@ -4,8 +4,20 @@ import { DomainError } from "../../errors.js";
 import { requireRevision } from "../academics/policy.js";
 
 export const consentVersion = "estimate-analysis-v1";
-const notice =
-  "Autorizo el uso del fragmento académico revisado para solicitar una estimación con OpenAI. Elimina datos personales antes de enviarlo. Puedes retirar el consentimiento en cualquier momento.";
+export const personalizationConsentVersion = "estimate-personalization-v1";
+export type EstimateConsentPurpose = "analysis" | "personalization";
+const policy = {
+  analysis: {
+    version: consentVersion,
+    notice:
+      "Autorizo el uso del fragmento académico revisado para solicitar una estimación con OpenAI. Elimina datos personales antes de enviarlo. Puedes retirar el consentimiento en cualquier momento.",
+  },
+  personalization: {
+    version: personalizationConsentVersion,
+    notice:
+      "Autorizo a CargaWise a usar mi historial de esfuerzo y horas reales para ajustar sugerencias cuando la personalización esté disponible. Puedes retirar el consentimiento en cualquier momento.",
+  },
+};
 
 export async function activeGrant(ctx: Context, now: Date) {
   const { rows } = await ctx.db.execute<{
@@ -18,20 +30,23 @@ export async function activeGrant(ctx: Context, now: Date) {
   return rows[0];
 }
 
-export async function estimateConsent(ctx: Context) {
+export async function estimateConsent(
+  ctx: Context,
+  purpose: EstimateConsentPurpose = "analysis",
+) {
   const { rows } = await ctx.db.execute<{
     granted: boolean;
     policy_version: string;
     revision: number;
   }>(sql`
-    select granted,policy_version,revision from app.estimate_consents where owner_id=${ctx.owner}
+    select granted,policy_version,revision from app.estimate_consents where owner_id=${ctx.owner} and purpose=${purpose}
   `);
   const row = rows[0];
   return {
-    policyVersion: consentVersion,
-    granted: row?.policy_version === consentVersion && row.granted,
+    policyVersion: policy[purpose].version,
+    granted: row?.policy_version === policy[purpose].version && row.granted,
     revision: row?.revision ?? 0,
-    notice,
+    notice: policy[purpose].notice,
   };
 }
 
@@ -49,8 +64,8 @@ export class Entitlements {
     });
   }
 
-  consent(owner: string) {
-    return this.academics.read(owner, estimateConsent);
+  consent(owner: string, purpose: EstimateConsentPurpose = "analysis") {
+    return this.academics.read(owner, (ctx) => estimateConsent(ctx, purpose));
   }
 
   async changeConsent(
@@ -59,8 +74,9 @@ export class Entitlements {
     revision: string | undefined,
     version: string,
     granted: boolean,
+    purpose: EstimateConsentPurpose = "analysis",
   ) {
-    if (version !== consentVersion)
+    if (version !== policy[purpose].version)
       throw new DomainError(
         409,
         "CONSENT_POLICY_CHANGED",
@@ -68,19 +84,21 @@ export class Entitlements {
       );
     await this.academics.mutate(
       owner,
-      "estimate-consent",
+      purpose === "analysis"
+        ? "estimate-consent"
+        : "estimate-personalization-consent",
       key,
       { revision, version, granted },
       async (ctx) => {
         requireRevision(
           revision,
           "consent",
-          (await estimateConsent(ctx)).revision,
+          (await estimateConsent(ctx, purpose)).revision,
         );
         await ctx.db.execute(sql`
-        insert into app.estimate_consents(owner_id,policy_version,granted,revision,changed_at)
-        values(${owner},${version},${granted},1,${this.academics.now().toISOString()})
-        on conflict(owner_id) do update set policy_version=excluded.policy_version,
+        insert into app.estimate_consents(owner_id,purpose,policy_version,granted,revision,changed_at)
+        values(${owner},${purpose},${version},${granted},1,${this.academics.now().toISOString()})
+        on conflict(owner_id,purpose) do update set policy_version=excluded.policy_version,
           granted=excluded.granted,revision=app.estimate_consents.revision+1,changed_at=excluded.changed_at
         where (app.estimate_consents.policy_version,app.estimate_consents.granted)
           is distinct from (excluded.policy_version,excluded.granted)
@@ -88,6 +106,6 @@ export class Entitlements {
         return { status: 200, data: null };
       },
     );
-    return this.consent(owner);
+    return this.consent(owner, purpose);
   }
 }

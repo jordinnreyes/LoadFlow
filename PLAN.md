@@ -582,3 +582,11 @@ F5-04 queda a la espera de la aprobación de esa prueba, proyecto con facturaci�
 ### Evaluación inicial de F5-04 con OpenAI
 
 El promotor configuró la clave local y autorizó hasta USD 1.50. Se mantuvo el tope de USD 1 en CargaWise. Dos intentos con `effort-range-es-v1` confirmaron conectividad y consumo, pero fallaron la comprobación de citas literales. Con `effort-range-es-v2`, los cuatro casos sintéticos de `gpt-6-luna` devolvieron el estado esperado. Las seis solicitudes sumaron 2367 tokens de entrada y 970 de salida, con costo conservador de USD 0.002155 en el registro local. El detalle está en [F5-DEVELOPMENT.md](docs/F5-DEVELOPMENT.md). F5-05, F5-06 y la revisión de M3 siguen pendientes.
+
+### F5-05 y F5-06 en desarrollo local
+
+Se implementó y verificó `local-d10-v1` con historial sintético y proveedor simulado. La calibración pide consentimiento separado, compara actividades propias terminadas de curso, tipo y tamaño coincidentes y usa el último total real positivo de cada una. Se excluyen observaciones con una estimación confirmada después de conocerse el tiempo o el cierre. El candidato usa al menos tres observaciones de los últimos 180 días, mediana atenuada por `n/(n+5)` y ajuste acotado a ±25 %. D-10 mantiene pendiente la aprobación de esos criterios para su habilitación.
+
+La API permite aceptar o corregir una sugerencia vigente, registra procedencia y conserva el historial. Si existe un plan, el recálculo crea una propuesta para revisión. La migración `0011_estimate_confirmation.sql` añade la separación de consentimientos, el vínculo con la confirmación de esfuerzo y el requisito de revisión del plan. [Contratos y política candidata](docs/F5-DEVELOPMENT.md#personalización-local-y-confirmación-de-esfuerzo).
+
+Verificación local con migración aplicada y repetición desde base vacía. `npm run check` pasó con 22 reglas y 34 pruebas de backend. La suite de integración pasó 22/22 y comprobó historial insuficiente, exclusión de observaciones tardías o de cero minutos, corrección de horas sin duplicación, revocación, confirmación idempotente y revisión del recálculo. Se regeneraron los contratos OpenAPI y el cliente TS. Las pruebas de esta continuación usaron proveedor simulado. La revisión de M3 sigue pendiente.

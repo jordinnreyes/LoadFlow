@@ -90,6 +90,7 @@ export const effortHistory = app.table("effort_confirmations", {
   activityRevision: integer("activity_revision").notNull(),
   minutes: integer("minutes"),
   origin: text("origin").notNull(),
+  estimateId: uuid("estimate_id"),
   supersedesId: uuid("supersedes_id"),
   confirmedAt: instant("confirmed_at").notNull(),
 });

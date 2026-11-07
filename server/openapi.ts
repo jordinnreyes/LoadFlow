@@ -58,7 +58,9 @@ export const documentProtocol: SwaggerTransformObject = (document) => {
           required: true,
           description:
             name === "If-Match"
-              ? "ETag vigente; 428 si falta y 412 si cambió. Aplicar una propuesta requiere el ETag workspace de su vista previa."
+              ? operation.operationId === "applyEstimate"
+                ? "ETag vigente de la actividad asociada. Responde 428 si falta y 412 si cambió."
+                : "ETag vigente; 428 si falta y 412 si cambió. Aplicar una propuesta requiere el ETag workspace de su vista previa."
               : name === "Idempotency-Key"
                 ? "Clave de 1–128 caracteres alfanuméricos, : _ o -. Repetir la misma operación/cuerpo devuelve el resultado original; reutilizar con otros datos devuelve 409."
                 : name === "Origin"

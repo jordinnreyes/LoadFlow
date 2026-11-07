@@ -7,7 +7,11 @@ import {
   type EstimatePolicy,
 } from "../../server/modules/estimates/service.js";
 import { runPremiumCommand } from "../../server/modules/entitlements/operator.js";
-import { consentVersion } from "../../server/modules/entitlements/service.js";
+import {
+  consentVersion,
+  personalizationConsentVersion,
+} from "../../server/modules/entitlements/service.js";
+import { PlanningWorker } from "../../server/modules/jobs/planning-worker.js";
 import type { ProviderResult } from "../../server/modules/estimates/provider.js";
 import { estimateCorpus } from "../fixtures/estimates/corpus.js";
 import { fixture } from "./fixture.js";
@@ -312,6 +316,269 @@ test("uncertain calls retain budget and require explicit reconciliation before a
       await operator.query("delete from app.estimate_usage where owner_id=$1", [
         owner,
       ]);
+    await operator.end();
+    await f.close();
+  }
+});
+
+test("confirmed suggestions preserve history and personalize only from comparable work observed after acceptance", async () => {
+  const f = await fixture(
+    new Date("2031-03-01T13:00:00Z"),
+    undefined,
+    undefined,
+    (academics) =>
+      new Estimates(
+        academics,
+        { estimate: async () => success },
+        {
+          ...policy,
+          userBudgetMicros: 1000000000n,
+          globalBudgetMicros: 1000000000n,
+          personalization: true,
+        },
+      ),
+  );
+  const operator = new pg.Client({
+    connectionString: process.env.MIGRATION_DATABASE_URL,
+  });
+  const personalizationPath = "/api/v1/me/estimate-personalization-consent";
+  try {
+    await operator.connect();
+    const a = await f.client();
+    await runPremiumCommand(
+      operator,
+      {
+        action: "grant",
+        owner: a.owner,
+        expiresAt: new Date("2031-03-02T00:00:00Z"),
+        actor: "fixture",
+        reason: "F5",
+      },
+      f.now,
+    );
+    const consent = await f.request(
+      a,
+      "PUT",
+      consentPath,
+      { policyVersion: consentVersion, granted: true },
+      '"consent-0"',
+    );
+    assert.equal(consent.statusCode, 200, consent.body);
+    assert.equal(
+      (await f.request(a, "GET", personalizationPath)).json().granted,
+      false,
+    );
+    const allowHistory = await f.request(
+      a,
+      "PUT",
+      personalizationPath,
+      { policyVersion: personalizationConsentVersion, granted: true },
+      '"consent-0"',
+    );
+    assert.equal(allowHistory.statusCode, 200, allowHistory.body);
+
+    const period = await f.request(a, "POST", "/api/v1/periods", {
+      name: "F5 historial sintético",
+      timezone: "America/Lima",
+      endDate: "2031-03-10",
+    });
+    assert.equal(period.statusCode, 201, period.body);
+    const periodId = period.json().id;
+    const periodPath = "/api/v1/periods/" + periodId;
+    const course = await f.request(a, "POST", periodPath + "/courses", {
+      name: "Bases sintéticas",
+    });
+    assert.equal(course.statusCode, 201, course.body);
+    const courseId = course.json().id;
+    const create = async (title: string, operatingMinutes?: number) => {
+      const r = await f.request(a, "POST", "/api/v1/activities", {
+        periodId,
+        courseId,
+        title,
+        type: "Tarea",
+        dueDate: "2031-03-09",
+        dueTime: "18:00",
+        timezone: "America/Lima",
+        allowedStartAt: f.now.toISOString(),
+        divisibility: "divisible",
+        ...(operatingMinutes === undefined ? {} : { operatingMinutes }),
+      });
+      assert.equal(r.statusCode, 201, r.body);
+      return {
+        path: "/api/v1/activities/" + r.json().id,
+        etag: String(r.headers.etag),
+      };
+    };
+    const estimate = async (
+      task: Awaited<ReturnType<typeof create>>,
+      workloadSize: "small" | "medium" = "small",
+    ) => {
+      const r = await f.request(
+        a,
+        "POST",
+        task.path + "/estimates",
+        { excerpt, workloadSize },
+        task.etag,
+      );
+      assert.equal(r.statusCode, 202, r.body);
+      assert.equal(r.json().state, "complete", r.body);
+      return r.json();
+    };
+    const confirm = (
+      task: Awaited<ReturnType<typeof create>>,
+      dto: { id: string; origin: string },
+      minutes: number,
+      decision = "accept",
+      key = randomUUID(),
+    ) =>
+      f.request(
+        a,
+        "POST",
+        "/api/v1/estimates/" + dto.id + "/apply",
+        { origin: dto.origin, selectedMinutes: minutes, decision },
+        task.etag,
+        key,
+      );
+    const progress = async (
+      task: Awaited<ReturnType<typeof create>>,
+      realTotalMinutes: number,
+      preparationState = "done",
+    ) => {
+      const r = await f.request(
+        a,
+        "PUT",
+        task.path + "/progress",
+        { realTotalMinutes, preparationState },
+        task.etag,
+      );
+      assert.equal(r.statusCode, 200, r.body);
+      return { path: task.path, etag: String(r.headers.etag) };
+    };
+    const closed = async (
+      title: string,
+      actual: number,
+      observedFirst = false,
+    ) => {
+      let task = await create(title);
+      if (observedFirst) task = await progress(task, actual, "progress");
+      const dto = await estimate(task);
+      const saved = await confirm(task, dto, 60);
+      assert.equal(saved.statusCode, 200, saved.body);
+      assert.equal(
+        saved.json().effortOrigin,
+        dto.origin === "base" ? "suggested" : "personalized",
+      );
+      return progress(
+        { path: task.path, etag: String(saved.headers.etag) },
+        actual,
+      );
+    };
+
+    const first = await closed("Comparación uno", 120);
+    const second = await closed("Comparación dos", 120);
+    const target = await create("Actividad por estimar", 60);
+    assert.equal((await estimate(target)).origin, "base");
+    await closed("Comparación tres", 120);
+    await closed("Duración conocida antes de sugerir", 300, true);
+    await closed("Sin horas reales positivas", 0);
+
+    const personalized = await estimate(target);
+    assert.equal(personalized.origin, "personalized");
+    assert.equal(personalized.calibration.comparableCount, 3);
+    assert.equal(personalized.suggestion.lowMinutes, 50);
+    assert.equal(personalized.suggestion.highMinutes, 100);
+    assert.equal((await estimate(target, "medium")).origin, "base");
+    assert.equal(
+      (await f.request(a, "GET", target.path)).json().operatingMinutes,
+      60,
+    );
+
+    await progress(first, 20);
+    await progress(second, 20);
+    const afterCorrections = await estimate(target);
+    assert.equal(afterCorrections.calibration.comparableCount, 3);
+    assert.equal(afterCorrections.suggestion.lowMinutes, 30);
+    assert.equal(afterCorrections.suggestion.highMinutes, 60);
+    assert.notEqual(afterCorrections.id, personalized.id);
+
+    const rejected = await confirm(target, afterCorrections, 61);
+    assert.equal(rejected.statusCode, 422, rejected.body);
+    const revoked = await f.request(
+      a,
+      "PUT",
+      personalizationPath,
+      { policyVersion: personalizationConsentVersion, granted: false },
+      '"consent-1"',
+    );
+    assert.equal(revoked.statusCode, 200, revoked.body);
+    assert.equal(
+      (await confirm(target, afterCorrections, 60)).json().error.code,
+      "ESTIMATE_ORIGIN_CHANGED",
+    );
+    assert.equal((await f.request(a, "GET", consentPath)).json().granted, true);
+    const base = await estimate(target);
+    assert.equal(base.origin, "base");
+
+    const capacity = await f.request(
+      a,
+      "PUT",
+      periodPath + "/availability",
+      {
+        confirmed: true,
+        timezone: "America/Lima",
+        validFrom: "2031-03-01",
+        validTo: null,
+        weekly: Array.from({ length: 7 }, (_, i) => ({
+          weekday: i + 1,
+          state: "windows",
+          intervals: [{ startMinute: 540, endMinute: 780 }],
+        })),
+        exceptions: [],
+        manualCoverage: [{ from: "2031-03-01", to: "2031-03-15" }],
+        preferences: {
+          minimumMinutes: 30,
+          preferredMinutes: 60,
+          maximumMinutes: 120,
+        },
+      },
+      '"availability-0"',
+    );
+    assert.equal(capacity.statusCode, 200, capacity.body);
+    const current = await f.request(a, "GET", periodPath + "/plan");
+    const proposal = await f.request(
+      a,
+      "POST",
+      periodPath + "/planning-proposals",
+      { kind: "recalculate" },
+      String(current.headers.etag),
+    );
+    assert.equal(proposal.statusCode, 201, proposal.body);
+    const plan = await f.request(
+      a,
+      "POST",
+      "/api/v1/planning-proposals/" + proposal.json().id + "/apply",
+      { confirmations: proposal.json().requiredConfirmations },
+      String(proposal.headers.etag),
+    );
+    assert.equal(plan.statusCode, 200, plan.body);
+
+    const key = randomUUID();
+    const applied = await confirm(target, base, 95, "correct", key);
+    assert.equal(applied.statusCode, 200, applied.body);
+    assert.equal(applied.json().effortOrigin, "corrected");
+    assert.equal(applied.json().operatingMinutes, 95);
+    assert.deepEqual(
+      (await confirm(target, base, 95, "correct", key)).json(),
+      applied.json(),
+    );
+    assert.equal((await confirm(target, base, 95, "correct")).statusCode, 412);
+    await new PlanningWorker(f.planning).tick();
+    const planAfter = (await f.request(a, "GET", periodPath + "/plan")).json();
+    assert.equal(planAfter.recalculation.state, "needs_review");
+    assert.equal(planAfter.planRevision, plan.json().planRevision);
+    assert.deepEqual(planAfter.result.sessions, plan.json().result.sessions);
+    assert.ok(planAfter.pendingProposalId);
+  } finally {
     await operator.end();
     await f.close();
   }

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { OpenAIResponses } from "../../server/modules/estimates/provider.js";
+import { fitCalibration } from "../../server/modules/estimates/calibration.js";
 import {
   prepareExcerpt,
   validateSuggestion,
@@ -110,4 +111,18 @@ test("semantic validation rejects fabricated evidence, inverted ranges and obvio
     prepareExcerpt("<b>Entrega</b> un informe."),
     "Entrega un informe.",
   );
+});
+
+test("calibration shrinks the median and discounts an extreme observation", () => {
+  const sample = { low: 40, high: 80, actual: 72 };
+  assert.equal(
+    fitCalibration([sample, sample, { ...sample, actual: 0 }], 1),
+    null,
+  );
+  const fitted = fitCalibration(
+    [sample, sample, { ...sample, actual: 5000 }],
+    2,
+  );
+  assert.equal(fitted?.comparableCount, 3);
+  assert.equal(fitted?.multiplierBps, Math.round(10000 * 1.2 ** (3 / 8)));
 });

@@ -468,6 +468,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/estimate-personalization-consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getEstimatePersonalizationConsent"];
+        put: operations["setEstimatePersonalizationConsent"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/activities/{id}/estimates": {
         parameters: {
             query?: never;
@@ -494,6 +510,22 @@ export interface paths {
         get: operations["getEstimate"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/estimates/{id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["applyEstimate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4344,7 +4376,7 @@ export interface operations {
                             priorityOverride: ("Alta" | "Media" | "Baja") | null;
                             effectivePriority: ("Alta" | "Media" | "Baja") | null;
                             operatingMinutes: number | null;
-                            effortOrigin: "manual" | "corrected" | null;
+                            effortOrigin: "manual" | "corrected" | "suggested" | "personalized" | null;
                             realTotalMinutes: number | null;
                             remainingMinutes: number | null;
                             pendingMinutes: number | null;
@@ -4587,7 +4619,7 @@ export interface operations {
                         priorityOverride: ("Alta" | "Media" | "Baja") | null;
                         effectivePriority: ("Alta" | "Media" | "Baja") | null;
                         operatingMinutes: number | null;
-                        effortOrigin: "manual" | "corrected" | null;
+                        effortOrigin: "manual" | "corrected" | "suggested" | "personalized" | null;
                         realTotalMinutes: number | null;
                         remainingMinutes: number | null;
                         pendingMinutes: number | null;
@@ -4801,7 +4833,7 @@ export interface operations {
                         priorityOverride: ("Alta" | "Media" | "Baja") | null;
                         effectivePriority: ("Alta" | "Media" | "Baja") | null;
                         operatingMinutes: number | null;
-                        effortOrigin: "manual" | "corrected" | null;
+                        effortOrigin: "manual" | "corrected" | "suggested" | "personalized" | null;
                         realTotalMinutes: number | null;
                         remainingMinutes: number | null;
                         pendingMinutes: number | null;
@@ -5036,7 +5068,7 @@ export interface operations {
                         priorityOverride: ("Alta" | "Media" | "Baja") | null;
                         effectivePriority: ("Alta" | "Media" | "Baja") | null;
                         operatingMinutes: number | null;
-                        effortOrigin: "manual" | "corrected" | null;
+                        effortOrigin: "manual" | "corrected" | "suggested" | "personalized" | null;
                         realTotalMinutes: number | null;
                         remainingMinutes: number | null;
                         pendingMinutes: number | null;
@@ -5267,7 +5299,7 @@ export interface operations {
                         priorityOverride: ("Alta" | "Media" | "Baja") | null;
                         effectivePriority: ("Alta" | "Media" | "Baja") | null;
                         operatingMinutes: number | null;
-                        effortOrigin: "manual" | "corrected" | null;
+                        effortOrigin: "manual" | "corrected" | "suggested" | "personalized" | null;
                         realTotalMinutes: number | null;
                         remainingMinutes: number | null;
                         pendingMinutes: number | null;
@@ -5497,7 +5529,7 @@ export interface operations {
                         priorityOverride: ("Alta" | "Media" | "Baja") | null;
                         effectivePriority: ("Alta" | "Media" | "Baja") | null;
                         operatingMinutes: number | null;
-                        effortOrigin: "manual" | "corrected" | null;
+                        effortOrigin: "manual" | "corrected" | "suggested" | "personalized" | null;
                         realTotalMinutes: number | null;
                         remainingMinutes: number | null;
                         pendingMinutes: number | null;
@@ -5711,7 +5743,7 @@ export interface operations {
                         priorityOverride: ("Alta" | "Media" | "Baja") | null;
                         effectivePriority: ("Alta" | "Media" | "Baja") | null;
                         operatingMinutes: number | null;
-                        effortOrigin: "manual" | "corrected" | null;
+                        effortOrigin: "manual" | "corrected" | "suggested" | "personalized" | null;
                         realTotalMinutes: number | null;
                         remainingMinutes: number | null;
                         pendingMinutes: number | null;
@@ -5945,7 +5977,7 @@ export interface operations {
                         priorityOverride: ("Alta" | "Media" | "Baja") | null;
                         effectivePriority: ("Alta" | "Media" | "Baja") | null;
                         operatingMinutes: number | null;
-                        effortOrigin: "manual" | "corrected" | null;
+                        effortOrigin: "manual" | "corrected" | "suggested" | "personalized" | null;
                         realTotalMinutes: number | null;
                         remainingMinutes: number | null;
                         pendingMinutes: number | null;
@@ -7057,7 +7089,7 @@ export interface operations {
                         priorityOverride: ("Alta" | "Media" | "Baja") | null;
                         effectivePriority: ("Alta" | "Media" | "Baja") | null;
                         operatingMinutes: number | null;
-                        effortOrigin: "manual" | "corrected" | null;
+                        effortOrigin: "manual" | "corrected" | "suggested" | "personalized" | null;
                         realTotalMinutes: number | null;
                         remainingMinutes: number | null;
                         pendingMinutes: number | null;
@@ -7658,6 +7690,432 @@ export interface operations {
             };
         };
     };
+    getEstimatePersonalizationConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        policyVersion: string;
+                        granted: boolean;
+                        revision: number;
+                        notice: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    setEstimatePersonalizationConsent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Origen exacto configurado para el cliente web. */
+                Origin: string;
+                /** @description Token obtenido de la sesión, ligado a su cookie opaca. */
+                "X-CSRF-Token": string;
+                /** @description Clave de 1–128 caracteres alfanuméricos, : _ o -. Repetir la misma operación/cuerpo devuelve el resultado original; reutilizar con otros datos devuelve 409. */
+                "Idempotency-Key": string;
+                /** @description ETag vigente; 428 si falta y 412 si cambió. Aplicar una propuesta requiere el ETag workspace de su vista previa. */
+                "If-Match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    policyVersion: string;
+                    granted: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        policyVersion: string;
+                        granted: boolean;
+                        revision: number;
+                        notice: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+        };
+    };
     requestEstimate: {
         parameters: {
             query?: never;
@@ -7680,6 +8138,7 @@ export interface operations {
             content: {
                 "application/json": {
                     excerpt: string;
+                    workloadSize?: "small" | "medium" | "large";
                 };
             };
         };
@@ -7707,8 +8166,11 @@ export interface operations {
                         errorCode: string | null;
                         model: string;
                         promptVersion: string;
-                        /** @enum {string} */
-                        origin: "base";
+                        origin: "base" | "personalized";
+                        calibration: {
+                            version: string;
+                            comparableCount: number;
+                        } | null;
                         /** Format: date-time */
                         createdAt: string;
                         /** @enum {boolean} */
@@ -7932,12 +8394,266 @@ export interface operations {
                         errorCode: string | null;
                         model: string;
                         promptVersion: string;
-                        /** @enum {string} */
-                        origin: "base";
+                        origin: "base" | "personalized";
+                        calibration: {
+                            version: string;
+                            comparableCount: number;
+                        } | null;
                         /** Format: date-time */
                         createdAt: string;
                         /** @enum {boolean} */
                         manualEntryAvailable: true;
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    applyEstimate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Origen exacto configurado para el cliente web. */
+                Origin: string;
+                /** @description Token obtenido de la sesión, ligado a su cookie opaca. */
+                "X-CSRF-Token": string;
+                /** @description Clave de 1–128 caracteres alfanuméricos, : _ o -. Repetir la misma operación/cuerpo devuelve el resultado original; reutilizar con otros datos devuelve 409. */
+                "Idempotency-Key": string;
+                /** @description ETag vigente de la actividad asociada. Responde 428 si falta y 412 si cambió. */
+                "If-Match": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    decision: "accept" | "correct";
+                    selectedMinutes: number;
+                    origin: "base" | "personalized";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        periodId: string;
+                        courseId: string | null;
+                        title: string;
+                        type: "Práctica calificada" | "Examen parcial" | "Examen final" | "Tarea" | "Informe" | "Exposición" | "Proyecto individual" | "Entrega grupal";
+                        description: string;
+                        /** Format: date */
+                        dueDate: string;
+                        dueTime: string | null;
+                        timezone: string | null;
+                        dueAt: string | null;
+                        evaluationEndAt: string | null;
+                        allowedStartAt: string | null;
+                        divisibility: "unknown" | "divisible" | "indivisible";
+                        dependencies: string[];
+                        priorityMode: "inherit" | "override" | "none";
+                        priorityOverride: ("Alta" | "Media" | "Baja") | null;
+                        effectivePriority: ("Alta" | "Media" | "Baja") | null;
+                        operatingMinutes: number | null;
+                        effortOrigin: "manual" | "corrected" | "suggested" | "personalized" | null;
+                        realTotalMinutes: number | null;
+                        remainingMinutes: number | null;
+                        pendingMinutes: number | null;
+                        needsReview: boolean;
+                        effectiveCompletionDate: string | null;
+                        preparationState: "new" | "progress" | "done";
+                        fulfillmentState: "pending" | "fulfilled";
+                        revision: number;
+                        planningState: "not_generated" | "current" | "stale";
                     };
                 };
             };

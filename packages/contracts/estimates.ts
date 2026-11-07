@@ -18,9 +18,16 @@ export const ConsentInput = Type.Object(
   },
   strict,
 );
+export const WorkloadSize = Type.Union([
+  Type.Literal("small"),
+  Type.Literal("medium"),
+  Type.Literal("large"),
+]);
+export type WorkloadSize = Static<typeof WorkloadSize>;
 export const EstimateInput = Type.Object(
   {
     excerpt: Type.String({ minLength: 1, maxLength: 2400 }),
+    workloadSize: Type.Optional(WorkloadSize),
   },
   strict,
 );
@@ -29,6 +36,10 @@ const Status = Type.Union([
   Type.Literal("estimated"),
   Type.Literal("needs_context"),
   Type.Literal("abstained"),
+]);
+const SuggestionOrigin = Type.Union([
+  Type.Literal("base"),
+  Type.Literal("personalized"),
 ]);
 export const EstimateFactor = Type.Union([
   Type.Literal("deliverables"),
@@ -66,10 +77,29 @@ export const Estimate = Type.Object(
     errorCode: NullableText,
     model: Type.String(),
     promptVersion: Type.String(),
-    origin: Type.Literal("base"),
+    origin: SuggestionOrigin,
+    calibration: Type.Union([
+      Type.Object(
+        {
+          version: Type.String(),
+          comparableCount: Type.Integer({ minimum: 1 }),
+        },
+        strict,
+      ),
+      Type.Null(),
+    ]),
     createdAt: Instant,
     manualEntryAvailable: Type.Literal(true),
   },
   strict,
 );
 export type SuggestionDto = Static<typeof Suggestion>;
+export const ConfirmEstimate = Type.Object(
+  {
+    decision: Type.Union([Type.Literal("accept"), Type.Literal("correct")]),
+    selectedMinutes: Type.Integer({ minimum: 1, maximum: 2147483647 }),
+    origin: SuggestionOrigin,
+  },
+  strict,
+);
+export type ConfirmEstimate = Static<typeof ConfirmEstimate>;

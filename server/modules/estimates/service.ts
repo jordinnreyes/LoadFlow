@@ -4,7 +4,17 @@ import { DomainError, notFound } from "../../errors.js";
 import type { Academics, Context } from "../academics/service.js";
 import { requireRevision } from "../academics/policy.js";
 import { activeGrant, estimateConsent } from "../entitlements/service.js";
-import type { SuggestionDto } from "../../../packages/contracts/estimates.js";
+import type {
+  ConfirmEstimate,
+  SuggestionDto,
+  WorkloadSize,
+} from "../../../packages/contracts/estimates.js";
+import {
+  adjustSuggestion,
+  calibrationFor,
+  localCalibrationPolicy,
+  type CalibrationSnapshot,
+} from "./calibration.js";
 import {
   prepareExcerpt,
   promptVersion,
@@ -32,6 +42,7 @@ export type EstimatePolicy = {
   outputMicrosPerMillion: bigint;
   userBudgetMicros: bigint;
   globalBudgetMicros: bigint;
+  personalization?: boolean;
 };
 
 type EstimateRow = {
@@ -49,6 +60,7 @@ type EstimateRow = {
   input_micros_per_million: string;
   output_micros_per_million: string;
   result: SuggestionDto | null;
+  calibration: CalibrationSnapshot | null;
   error_code: string | null;
   created_at: string | Date;
   expires_at: string | Date;
@@ -131,6 +143,7 @@ export class Estimates {
     key: string | undefined,
     version: string | undefined,
     text: string,
+    workloadSize?: WorkloadSize,
   ) {
     const excerpt = prepareExcerpt(text);
     const policy = this.policy;
@@ -145,6 +158,7 @@ export class Estimates {
       {
         version,
         excerpt: fingerprint(excerpt),
+        ...(workloadSize === undefined ? {} : { workloadSize }),
         environment: policy.environment,
       },
       async (ctx) => {
@@ -160,6 +174,20 @@ export class Estimates {
             "ESTIMATE_INELIGIBLE",
             "La estimación requiere una actividad individual con preparación abierta.",
           );
+        const now = this.academics.now();
+        const calibration = policy.personalization
+          ? await calibrationFor(
+              ctx,
+              activity,
+              workloadSize,
+              {
+                environment: policy.environment,
+                model: policy.model,
+                prompt: promptVersion,
+              },
+              now,
+            )
+          : null;
         const hash = fingerprint([
           activityId,
           activity.revision,
@@ -168,8 +196,8 @@ export class Estimates {
           policy.model,
           promptVersion,
           policy.maxMinutes,
+          ...(workloadSize === undefined ? [] : [workloadSize, calibration]),
         ]);
-        const now = this.academics.now();
         const { rows } = await ctx.db.execute<{ id: string }>(sql`
           select id from app.estimate_usage where owner_id=${owner} and activity_id=${activityId}
           and environment=${policy.environment} and fingerprint=${hash} and (
@@ -197,6 +225,11 @@ export class Estimates {
             reserved[0].error,
             "La estimación no está disponible por el límite de consumo o concurrencia. Puedes ingresar el esfuerzo manualmente.",
           );
+        await ctx.db.execute(sql`
+          update app.estimate_usage set course_id=${activity.courseId},activity_type=${activity.type},
+          workload_size=${workloadSize ?? null},calibration=${calibration ? JSON.stringify(calibration) : null}::jsonb
+          where owner_id=${owner} and id=${id}
+        `);
         return { status: 202, data: { id } };
       },
     );
@@ -348,12 +381,17 @@ export class Estimates {
           : row.state === "succeeded"
             ? "complete"
             : "pending";
+      const shown = await this.presentation(
+        ctx,
+        row,
+        state === "complete" ? row.result : null,
+      );
       return {
         id: row.id,
         activityId: row.activity_id,
         activityRevision: row.activity_revision,
         state,
-        suggestion: state === "complete" ? row.result : null,
+        ...shown,
         errorCode: unknown
           ? "PROVIDER_OUTCOME_UNKNOWN"
           : stale
@@ -361,10 +399,119 @@ export class Estimates {
             : row.error_code,
         model: row.model,
         promptVersion: row.prompt_version,
-        origin: "base",
         createdAt: new Date(row.created_at).toISOString(),
         manualEntryAvailable: true,
       };
     });
+  }
+
+  private async presentation(
+    ctx: Context,
+    row: EstimateRow,
+    base: SuggestionDto | null,
+  ) {
+    const snapshot = row.calibration;
+    if (
+      base &&
+      snapshot?.version === localCalibrationPolicy.version &&
+      this.policy.personalization
+    ) {
+      const consent = await estimateConsent(ctx, "personalization");
+      if (consent.granted && consent.revision === snapshot.consentRevision) {
+        const suggestion = adjustSuggestion(
+          base,
+          snapshot,
+          this.policy.maxMinutes,
+        );
+        if (suggestion)
+          return {
+            suggestion,
+            origin: "personalized" as const,
+            calibration: {
+              version: snapshot.version,
+              comparableCount: snapshot.comparableCount,
+            },
+          };
+      }
+    }
+    return { suggestion: base, origin: "base" as const, calibration: null };
+  }
+
+  confirm(
+    owner: string,
+    id: string,
+    key: string | undefined,
+    version: string | undefined,
+    input: ConfirmEstimate,
+  ) {
+    return this.academics.mutate(
+      owner,
+      "estimate-confirm:" + id,
+      key,
+      { version, input },
+      async (ctx) => {
+        const row = await this.row(ctx, id);
+        const activity = await this.academics.requireActivity(
+          ctx,
+          row.activity_id,
+        );
+        requireRevision(version, "activity", activity.revision);
+        const { grant, consent } = await this.rights(ctx);
+        if (
+          row.grant_id !== grant.id ||
+          row.consent_revision !== consent.revision ||
+          row.activity_revision !== activity.revision ||
+          activity.type === "Entrega grupal" ||
+          activity.preparationState === "done"
+        ) {
+          throw new DomainError(
+            409,
+            "ESTIMATE_STALE",
+            "La sugerencia cambió. Puedes solicitar otra o ingresar el esfuerzo manualmente.",
+          );
+        }
+        if (row.state !== "succeeded" || row.result?.status !== "estimated")
+          throw new DomainError(
+            409,
+            "ESTIMATE_NOT_APPLICABLE",
+            "Esta solicitud no produjo una sugerencia que se pueda confirmar.",
+          );
+        const shown = await this.presentation(ctx, row, row.result);
+        if (shown.origin !== input.origin)
+          throw new DomainError(
+            409,
+            "ESTIMATE_ORIGIN_CHANGED",
+            "Revisa el rango y el origen vigentes antes de confirmar.",
+          );
+        const { lowMinutes, highMinutes } = shown.suggestion ?? row.result;
+        if (
+          input.decision === "accept" &&
+          (lowMinutes === null ||
+            highMinutes === null ||
+            input.selectedMinutes < lowMinutes ||
+            input.selectedMinutes > highMinutes)
+        ) {
+          throw new DomainError(
+            422,
+            "ESTIMATE_MINUTES_OUTSIDE_RANGE",
+            "Elige minutos dentro del rango o confirma una corrección.",
+          );
+        }
+        return this.academics.confirmEstimatedEffortIn(
+          ctx,
+          activity,
+          input.selectedMinutes,
+          {
+            id,
+            origin:
+              input.decision === "correct"
+                ? "corrected"
+                : shown.origin === "personalized"
+                  ? "personalized"
+                  : "suggested",
+          },
+        );
+      },
+    );
   }
 }

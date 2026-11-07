@@ -159,6 +159,7 @@ export type PlanningClaim = {
   workspace_revision: number;
   lease_token: string;
   attempts: number;
+  review_required: boolean;
 };
 
 export class PlanningService {
@@ -877,7 +878,7 @@ export class PlanningService {
       values(${randomUUID()},${ctx.owner},${state.periodId},${p.workspaceRevision},${p.planRevision},${json(result)},
         ${state.snapshot.sourceFreshUntil === null ? null : instant(state.snapshot.sourceFreshUntil)},${previous?.id ?? null},${this.academics.now().toISOString()})`);
     await ctx.db.execute(
-      sql`update app.planning_jobs set status='done',lease_token=null,lease_until=null where owner_id=${ctx.owner} and period_id=${state.periodId}`,
+      sql`update app.planning_jobs set status='done',lease_token=null,lease_until=null,review_required=false where owner_id=${ctx.owner} and period_id=${state.periodId}`,
     );
   }
   async currentIn(ctx: Context, id: string) {
