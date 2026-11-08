@@ -56,3 +56,24 @@ npm run check
 node --env-file=.env --import tsx --test tests/integration/planning.test.ts
 npm run test:e2e:f7
 ```
+
+## F7-04 · Seguridad y privacidad
+
+| Control | Evidencia local |
+|---|---|
+| Autorización y RLS | Dos cuentas prueban el aislamiento en la API y directamente bajo el rol restringido de PostgreSQL. Una cuenta ajena recibe 404 al intentar retirar un documento y su actualización SQL afecta cero filas. Se verifican RLS forzada y ausencia de permisos directos para `anon`, `authenticated` y `service_role` en nueve tablas críticas. PostgREST rechaza seleccionar el esquema académico con credenciales anónimas y autenticadas. |
+| Sesión y CSRF | Se comprueban las cookies `Secure`, `HttpOnly` y `SameSite=Lax`, caducidad, revocación, cifrado de tokens y rechazo de replay OAuth. El multipart con origen ajeno o el CSRF de otra sesión se rechaza antes de crear una importación. |
+| Archivos y Storage | La carga rechaza campos multipart extra, incluido un intento de suministrar `sourceUrl`. La suite rechaza formato falso, macros disfrazadas, rutas relativas que salen del ZIP, cifrado y excesos. La extracción sigue usando el contenedor aislado sin red. Con un objeto existente y credenciales de cliente se comprueba que no se puede descargar, firmar, listar, sobrescribir ni eliminar el original de la ruta privada. |
+| Destinos HTTP y logs | Auth y Storage de Supabase rechazan redirecciones. Dos servidores loopback verifican que una respuesta 307 no alcanza el segundo destino con la sesión, el cuerpo de carga o las claves. Google Calendar y OpenAI usan destinos fijos y rechazan redirecciones. El logger conserva plantilla de ruta, estado y correlación sin URI cruda, códigos OAuth, cookies, tokens ni fragmentos. Los retornos OAuth usan `Referrer-Policy: no-referrer` y `Cache-Control: no-store`. |
+| Retirada y consentimientos | Se comprueba el borrado físico del temporal, el reintento duradero si Storage falla y que retirar elimina nombre, checksum y borradores y preserva la actividad con formato y localizador. Calendar descarta títulos de consultas en curso al ocultarlos y borra credenciales locales tras revocación confirmada. Revocar consentimiento Premium bloquea nuevas solicitudes y lectura de sugerencias sin borrar progreso. |
+
+La comprobación de Calendar usa un doble de Google y las de Premium usan un doble de OpenAI. La auditoría `npm audit --omit=dev --audit-level=high` contra el registro oficial devolvió cero avisos para las dependencias de ejecución del lockfile. D-15 sigue pendiente para la política de retención y borrado de cuenta, otros registros y copias de seguridad antes de piloto. El alcance de esta revisión es la pila local.
+
+### Repetición local
+
+```sh
+npm run check
+npm run test:integration
+npm run test:e2e:f7
+npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org
+```

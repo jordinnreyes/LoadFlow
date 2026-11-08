@@ -20,6 +20,7 @@ export async function privateImportStorage(
       fetch: (input, init) =>
         fetch(input, {
           ...init,
+          redirect: "error",
           signal: init?.signal
             ? AbortSignal.any([init.signal, AbortSignal.timeout(8000)])
             : AbortSignal.timeout(8000),

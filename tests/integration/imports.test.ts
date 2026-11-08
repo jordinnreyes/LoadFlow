@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { fixture } from "./fixture.js";
+import { ownerTransaction } from "../../server/db/client.js";
 import { privateImportStorage } from "../../server/modules/imports/storage.js";
 import { ImportService } from "../../server/modules/imports/service.js";
 import { ImportWorker } from "../../server/modules/jobs/import-worker.js";
@@ -92,6 +93,50 @@ test("F3 integrates private Storage, PostgreSQL drafts, confirmation, revisions 
     const workbook = await readFile(
       new URL("../fixtures/imports/anexo.xlsx", import.meta.url),
     );
+    const firstPart = encoded(workbook, "fixture.xlsx");
+    const boundary = firstPart.headers["content-type"].split("boundary=")[1];
+    const end = Buffer.from(`\r\n--${boundary}--\r\n`);
+    const extra = Buffer.concat([
+      firstPart.payload.subarray(0, -end.length),
+      Buffer.from(
+        `\r\n--${boundary}\r\nContent-Disposition: form-data; name="sourceUrl"\r\n\r\nhttp://127.0.0.1:1/private`,
+      ),
+      end,
+    ]);
+    const requestUpload = (
+      headers: Record<string, string>,
+      payload = firstPart.payload,
+    ) =>
+      f.app.inject({
+        method: "POST",
+        url: api + "/imports?periodId=" + period,
+        payload,
+        headers: {
+          ...firstPart.headers,
+          cookie: a.cookie,
+          origin: f.identity.config.origin,
+          "x-csrf-token": a.csrf,
+          "idempotency-key": randomUUID(),
+          ...headers,
+        },
+      });
+    assert.equal(
+      (await requestUpload({ origin: "http://untrusted.test" })).json().error
+        .code,
+      "ORIGIN_NOT_ALLOWED",
+    );
+    assert.equal(
+      (await requestUpload({ "x-csrf-token": b.csrf })).json().error.code,
+      "CSRF_REQUIRED",
+    );
+    assert.equal(
+      (await requestUpload({}, extra)).json().error.code,
+      "FILE_REQUIRED",
+    );
+    assert.deepEqual(
+      (await f.request(a, "GET", api + "/imports")).json().items,
+      [],
+    );
     const tooLarge = await upload(
       Buffer.alloc(limits.bytes + 1),
       "oversize.xlsx",
@@ -131,6 +176,25 @@ test("F3 integrates private Storage, PostgreSQL drafts, confirmation, revisions 
       (await f.request(b, "GET", api + "/imports/" + one.id)).statusCode,
       404,
     );
+    const foreignWithdrawal = await f.request(
+      b,
+      "DELETE",
+      api + "/documents/" + one.documentId,
+      undefined,
+      '"import-2"',
+    );
+    assert.equal(foreignWithdrawal.statusCode, 404);
+    await ownerTransaction(f.db.pool, b.owner, async (c) => {
+      const hidden = await c.query("select id from app.documents where id=$1", [
+        one.documentId,
+      ]);
+      assert.equal(hidden.rowCount, 0);
+      const update = await c.query(
+        "update app.documents set sha256=null where id=$1",
+        [one.documentId],
+      );
+      assert.equal(update.rowCount, 0);
+    });
     await worker.tick();
     await worker.tick();
     const path = api + "/imports/" + one.id;
@@ -409,6 +473,23 @@ test("F3 integrates private Storage, PostgreSQL drafts, confirmation, revisions 
       confirm.headers.etag as string,
     );
     assert.equal(removal.statusCode, 200, removal.body);
+    await ownerTransaction(f.db.pool, a.owner, async (c) => {
+      const document = await c.query(
+        "select filename, sha256, object_state from app.documents where id=$1",
+        [one.documentId],
+      );
+      assert.deepEqual(document.rows, [
+        { filename: null, sha256: null, object_state: "deleted" },
+      ]);
+      const sources = await c.query(
+        "select candidate_id, format, locator from app.activity_sources where activity_id=$1 and format='xlsx'",
+        [id],
+      );
+      assert.equal(sources.rowCount, 1);
+      assert.equal(sources.rows[0].candidate_id, null);
+      assert.ok(sources.rows[0].locator.unit >= 1);
+      assert.ok(sources.rows[0].locator.row >= 1);
+    });
     assert.equal(
       (await f.request(a, "GET", path + "/candidates")).json().items.length,
       0,

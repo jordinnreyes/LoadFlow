@@ -48,6 +48,7 @@ test("OAuth browser returns to the configured app and JSON callers keep the API"
     });
     assert.equal(result.statusCode, 303, result.body);
     assert.equal(result.headers.location, `${origin}/#/tablero`);
+    assert.equal(result.headers["referrer-policy"], "no-referrer");
     assert.match(
       String(result.headers["set-cookie"]),
       /__Host-cw_session=.*HttpOnly/i,

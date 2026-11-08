@@ -339,3 +339,21 @@ test("parser rejects empty, disguised, corrupt, encrypted and excessive input", 
     "MANUAL_ENTRY_AVAILABLE",
   ]);
 });
+
+test("F7 XLSX rejects a disguised macro member and ZIP traversal", async () => {
+  const original = await fixture("anexo.xlsx");
+  const member = "docProps/core.xml";
+  for (const [name, code] of [
+    ["xl/vbaProject.bin", "XLSX_UNSAFE_CONTAINER"],
+    ["../escape-zip.xml", "XLSX_INVALID_STRUCTURE"],
+  ]) {
+    assert.equal(name.length, member.length);
+    const tampered = Buffer.from(original);
+    const local = tampered.indexOf(member);
+    const central = tampered.indexOf(member, local + member.length);
+    assert.ok(local >= 0 && central > local);
+    tampered.write(name, local, "ascii");
+    tampered.write(name, central, "ascii");
+    await rejects(tampered, "looks-like-a-workbook.xlsx", code);
+  }
+});

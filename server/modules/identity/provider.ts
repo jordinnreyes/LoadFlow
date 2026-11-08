@@ -62,8 +62,18 @@ export class SupabaseProvider implements AuthProvider {
         },
       },
       global: {
-        fetch: (input, init) =>
-          fetch(input, { ...init, signal: AbortSignal.timeout(10000) }),
+        fetch: async (input, init) => {
+          try {
+            return await fetch(input, {
+              ...init,
+              redirect: "error",
+              signal: AbortSignal.timeout(10000),
+            });
+          } catch {
+            // The Auth SDK logs transport exceptions before mapping them.
+            return new Response(null, { status: 503 });
+          }
+        },
       },
     });
   }

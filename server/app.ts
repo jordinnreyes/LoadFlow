@@ -1,4 +1,5 @@
-import Fastify, { type FastifyError } from "fastify";
+import type { Writable } from "node:stream";
+import Fastify, { LogController, type FastifyError } from "fastify";
 import swagger from "@fastify/swagger";
 import cookie from "@fastify/cookie";
 import {
@@ -26,7 +27,7 @@ import type { Estimates } from "./modules/estimates/service.js";
 export async function buildApp(
   options: {
     ready?: () => Promise<void>;
-    logger?: boolean;
+    logger?: boolean | { stream: Writable };
     identity?: Identity;
     calendar?: CalendarService;
     imports?: ImportService;
@@ -38,6 +39,7 @@ export async function buildApp(
   const app = Fastify({
     logger: options.logger
       ? {
+          ...(typeof options.logger === "object" ? options.logger : {}),
           redact: [
             "req.headers.authorization",
             "req.headers.cookie",
@@ -45,10 +47,12 @@ export async function buildApp(
             "req.body",
           ],
           serializers: {
-            req: (req) => ({ method: req.method, url: req.url?.split("?")[0] }),
+            req: (req) => ({ method: req.method }),
+            err: () => ({ type: "Error", message: "Request failed", stack: "" }),
           },
         }
       : false,
+    logController: new LogController({ disableRequestLogging: true }),
     bodyLimit: 64 * 1024,
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false } },
   });
@@ -141,7 +145,19 @@ export async function buildApp(
   );
   app.addHook("onSend", async (_request, reply) => {
     reply.header("Cache-Control", "no-store");
+    reply.header("Referrer-Policy", "no-referrer");
     reply.header("X-Content-Type-Options", "nosniff");
+  });
+  app.addHook("onResponse", async (request, reply) => {
+    request.log.info(
+      {
+        method: request.method,
+        route: request.routeOptions.url ?? "unmatched",
+        statusCode: reply.statusCode,
+        responseTime: reply.elapsedTime,
+      },
+      "request completed",
+    );
   });
   app.get(
     "/api/v1/health/live",

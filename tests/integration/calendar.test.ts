@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
+import { ownerTransaction } from "../../server/db/client.js";
 import { fixture } from "./fixture.js";
 import { CalendarWorker } from "../../server/modules/jobs/calendar-worker.js";
 import {
@@ -29,6 +30,8 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
   const weeklyQueries: { from: string; to: string }[] = [];
   const initialSyncQueries: { from: string; to: string }[] = [];
   const titleQueries: string[] = [];
+  let titleHold: Promise<void> | undefined,
+    titleEntered: (() => void) | undefined;
   let hold: Promise<void> | undefined, entered: (() => void) | undefined;
   const token = (): Token => ({
     accessToken: "fixture-access-private",
@@ -77,6 +80,10 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
     events: async (credential, source) => {
       assert.ok(credential.scopes.includes(EVENT_TITLES_SCOPE));
       titleQueries.push(source.providerId);
+      if (titleHold) {
+        titleEntered?.();
+        await titleHold;
+      }
       return {
         items:
           source.providerId === "one"
@@ -296,7 +303,30 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
       (await r(a, "GET", titlesUrl)).json().items[0].title,
       "Clase ficticia",
     );
-    assert.equal((await setTitles(false)).json().eventTitlesEnabled, false);
+    let releaseTitles!: () => void;
+    titleHold = new Promise<void>((resolve) => (releaseTitles = resolve));
+    const fetchingTitles = new Promise<void>(
+      (resolve) => (titleEntered = resolve),
+    );
+    const pendingTitles = r(a, "GET", titlesUrl);
+    try {
+      await Promise.race([
+        fetchingTitles,
+        pendingTitles.then(() =>
+          assert.fail(
+            "La consulta terminó antes de llegar al proveedor de prueba.",
+          ),
+        ),
+      ]);
+      assert.equal((await setTitles(false)).json().eventTitlesEnabled, false);
+    } finally {
+      releaseTitles();
+      titleHold = undefined;
+    }
+    assert.deepEqual((await pendingTitles).json(), {
+      items: [],
+      partial: false,
+    });
     assert.equal((await r(a, "GET", firstWeekUrl)).json().coverage, "complete");
     const range =
       "/api/v1/calendar/busy?from=2030-01-07T05:00:00Z&to=2030-01-08T05:00:00Z";
@@ -483,6 +513,16 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
       combinedDisconnected.json().connection.eventTitlesAuthorized,
       false,
     );
+    assert.deepEqual((await r(a, "GET", titlesUrl)).json(), {
+      items: [],
+      partial: false,
+    });
+    await ownerTransaction(f.ids.pool, a.owner, async (c) => {
+      assert.equal(
+        (await c.query("select id from app.calendar_credentials")).rowCount,
+        0,
+      );
+    });
     const privateDenied = await f.db.pool.query(
       "select has_table_privilege(current_user,'app.calendar_credentials','select') as allowed",
     );
