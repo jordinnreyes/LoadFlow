@@ -35,3 +35,24 @@ npm run test:e2e:f7
 ```
 
 La comprobación de escaneo de Chromium usa un PDF con una imagen y sin capa de texto, generado en memoria por `pdf-fixture.ts`. Este corpus acredita la salida manual de la extracción Free. La extracción de texto de las imágenes queda fuera de este alcance.
+
+## F7-03 · Casos límite del planificador
+
+| Escenario | Resultado verificado |
+|---|---|
+| Oráculo exhaustivo en una cuadrícula de siete minutos | 192 casos adicionales de hasta tres tareas indivisibles y una sesión fijada opcional. El oráculo enumera posiciones y omisiones y compara los minutos asignados en orden Alta, Media y Baja, con dependencias, huecos de cobertura y ocupación. Se verifican repetibilidad, conservación de esfuerzo y de fijadas, ausencia de identificadores repetidos y de cambios en el snapshot de entrada. Los 64 casos de F4 se ejecutan también. |
+| Dos tareas en una ventana compartida | Una tarea de 60 min con prioridad Alta podía ocupar el único tramo de 30 min apto para otra tarea. La reparación prueba ambos extremos y encuentra una distribución completa dentro de los plazos. |
+| Remanente menor al mínimo | Con 70 min de esfuerzo, máximo de 60 y mínimo de 30, el motor ajusta la división a 40 + 30 en la misma ventana. |
+| Límite de búsqueda | El motor se detiene a los 10 000 estados y conserva una distribución válida parcial. El caso con precedencia y sin certificado de déficit informa búsqueda incompleta. La prueba de aborto del worker usa un timeout reducido de fixture. |
+| Cambio de hora y zonas de origen | La API rechaza una hora académica inexistente en Nueva York. Planifica un bloque indivisible de 90 minutos reales durante el cambio de hora, con ventana declarada en Nueva York y plazo en Tokio. Cambiar la visualización a Los Ángeles cambia el día mostrado y conserva los instantes UTC, las zonas de origen y la revisión del plan. Las pruebas de disponibilidad comprueban también la hora repetida de otoño. |
+| Grupos, fijadas, cambio de fecha y deshacer | La suite de integración repite la aceptación explícita de reservas y el rechazo de reutilizar ocupación equivalente. Verifica que un cambio de fecha y su historial se apliquen juntos y que un compromiso nuevo impida deshacer cuando invalidaría una sesión restaurada. En ese caso se conservan los bloques y la revisión del plan activo. |
+
+La reparación usa `deterministic-2`. El oráculo compara soluciones exactas solo en el dominio pequeño descrito. Para el resto de entradas sigue vigente el límite de búsqueda y la distinción entre faltantes y conflictos demostrados. Los escenarios de API usan cuentas sintéticas en PostgreSQL/Auth locales. La ocupación externa de las pruebas de grupos se simula con evidencia local.
+
+### Repetición local
+
+```sh
+npm run check
+node --env-file=.env --import tsx --test tests/integration/planning.test.ts
+npm run test:e2e:f7
+```

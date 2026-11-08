@@ -1,7 +1,7 @@
 import type { Span } from "./intervals.ts";
 
 export const POLICY_VERSION = "development-2026-11-06";
-export const ALGORITHM_VERSION = "deterministic-1";
+export const ALGORITHM_VERSION = "deterministic-2";
 export const SEARCH_LIMIT = 10_000;
 export const CALCULATION_TIMEOUT_MS = 20_000;
 export type Priority = "Alta" | "Media" | "Baja" | null;

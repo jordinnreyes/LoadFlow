@@ -118,7 +118,13 @@ test("F4 plans beyond five weeks, applies dates once, and revalidates automatic 
     assert.equal(weekly.json().weeks[0].deadlineActivityIds.length, 0);
     assert.equal(weekly.json().weeks[0].studyMinutes, 120);
     assert.equal(
-      weekly.json().weeks[0].days.reduce((total: number, day: { studyMinutes: number }) => total + day.studyMinutes, 0),
+      weekly
+        .json()
+        .weeks[0].days.reduce(
+          (total: number, day: { studyMinutes: number }) =>
+            total + day.studyMinutes,
+          0,
+        ),
       120,
     );
     assert.equal(weekly.json().weeks[0].state, "viable");
@@ -416,6 +422,15 @@ test("F4 applies versioned private plans, verifies worker recovery, fixed confli
     );
     assert.equal(rejected.statusCode, 422, rejected.body);
     assert.equal(rejected.json().error.code, "UNDO_REVALIDATION_FAILED");
+    const afterRejectedUndo = await f.request(a, "GET", period + "/plan");
+    assert.equal(
+      afterRejectedUndo.json().planRevision,
+      conflicted.json().planRevision,
+    );
+    assert.deepEqual(
+      afterRejectedUndo.json().result.sessions,
+      conflicted.json().result.sessions,
+    );
 
     const progress = await f.request(
       a,
@@ -445,6 +460,128 @@ test("F4 applies versioned private plans, verifies worker recovery, fixed confli
       (await f.db.pool.query("select id from app.sessions")).rows.length,
       0,
     );
+  } finally {
+    await f.close();
+  }
+});
+
+test("F7 plans in declared source zones across DST and only changes the weekly display zone", async () => {
+  const time = new Date("2030-03-10T05:00:00Z");
+  const f = await fixture(time);
+  try {
+    const a = await f.client();
+    const created = await f.request(a, "POST", api + "/periods", {
+      name: "Cambio de hora",
+      timezone: "America/New_York",
+      endDate: "2030-03-10",
+    });
+    assert.equal(created.statusCode, 201, created.body);
+    const periodId = created.json().id;
+    const period = api + "/periods/" + periodId;
+    const available = await f.request(
+      a,
+      "PUT",
+      period + "/availability",
+      {
+        ...config(),
+        timezone: "America/New_York",
+        validFrom: "2030-03-10",
+        manualCoverage: [{ from: "2030-03-10", to: "2030-03-11" }],
+        exceptions: [
+          {
+            date: "2030-03-10",
+            mode: "replace",
+            intervals: [{ startMinute: 90, endMinute: 240 }],
+          },
+        ],
+      },
+      '"availability-0"',
+    );
+    assert.equal(available.statusCode, 200, available.body);
+    const input = {
+      ...newActivity(periodId, "Bloque continuo durante el cambio de hora"),
+      dueDate: "2030-03-10",
+      dueTime: "17:00",
+      timezone: "Asia/Tokyo",
+      allowedStartAt: time.toISOString(),
+      operatingMinutes: 90,
+      divisibility: "indivisible",
+    };
+    const ambiguous = await f.request(a, "POST", api + "/activities", {
+      ...input,
+      timezone: "America/New_York",
+      dueTime: "02:30",
+    });
+    assert.equal(ambiguous.statusCode, 422, ambiguous.body);
+    const task = await f.request(a, "POST", api + "/activities", input);
+    assert.equal(task.statusCode, 201, task.body);
+    const current = await f.request(a, "GET", period + "/plan");
+    const proposal = await f.request(
+      a,
+      "POST",
+      period + "/planning-proposals",
+      { kind: "recalculate" },
+      etag(current),
+    );
+    assert.equal(proposal.statusCode, 201, proposal.body);
+    assert.equal(proposal.json().after.state, "viable", proposal.body);
+    const applied = await f.request(
+      a,
+      "POST",
+      api + "/planning-proposals/" + proposal.json().id + "/apply",
+      { confirmations: [] },
+      etag(proposal),
+    );
+    assert.equal(applied.statusCode, 200, applied.body);
+    const sessions = applied.json().result.sessions;
+    assert.equal(sessions.length, 1);
+    assert.equal(sessions[0].startAt, "2030-03-10T06:30:00.000Z");
+    assert.equal(sessions[0].endAt, "2030-03-10T08:00:00.000Z");
+    const weekly = () =>
+      f.request(
+        a,
+        "GET",
+        period + "/weekly-plan?from=2030-03-09&to=2030-03-11",
+      );
+    const east = await weekly();
+    assert.equal(east.statusCode, 200, east.body);
+    assert.equal(east.json().timezone, "America/New_York");
+    assert.deepEqual(
+      east
+        .json()
+        .weeks[0].days.map((d: { studyMinutes: number }) => d.studyMinutes),
+      [0, 90],
+    );
+    const changed = await f.request(
+      a,
+      "PATCH",
+      api + "/me/preferences",
+      { studyTimezone: "America/Los_Angeles" },
+      '"profile-1"',
+    );
+    assert.equal(changed.statusCode, 200, changed.body);
+    const west = await weekly();
+    assert.equal(west.statusCode, 200, west.body);
+    assert.equal(west.json().timezone, "America/Los_Angeles");
+    assert.deepEqual(
+      west
+        .json()
+        .weeks[0].days.map((d: { studyMinutes: number }) => d.studyMinutes),
+      [90, 0],
+    );
+    assert.equal(west.json().weeks[0].studyMinutes, 90);
+    const persisted = await f.request(a, "GET", period + "/plan");
+    assert.equal(persisted.json().planRevision, applied.json().planRevision);
+    assert.deepEqual(persisted.json().result.sessions, sessions);
+    const sources = await f.request(a, "GET", period + "/availability");
+    assert.equal(sources.json().configuration.timezone, "America/New_York");
+    const academic = await f.request(
+      a,
+      "GET",
+      api + "/activities/" + task.json().id,
+    );
+    assert.equal(academic.json().timezone, "Asia/Tokyo");
+    assert.equal(academic.json().dueTime, task.json().dueTime);
   } finally {
     await f.close();
   }

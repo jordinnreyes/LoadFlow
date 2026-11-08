@@ -155,6 +155,7 @@ function individualChunks(
   a: Activity,
   free: Span[],
   need: number,
+  edge: "start" | "end" = "start",
 ) {
   const preferences = snapshot.preferences!;
   const blocks: Session[] = [];
@@ -174,20 +175,22 @@ function individualChunks(
       if (
         remaining > size &&
         remaining - size < preferences.minimum &&
-        remaining <= duration(slot) &&
-        remaining <= preferences.maximum
-      )
-        size = remaining;
+        remaining <= duration(slot)
+      ) {
+        if (remaining <= preferences.maximum) size = remaining;
+        else if (remaining >= 2 * preferences.minimum)
+          size = remaining - preferences.minimum;
+      }
       if (size < preferences.minimum) break;
-      blocks.push(
-        session(snapshot, a, { start: slot.start, end: slot.start + size }),
-      );
-      slot.start += size;
+      const start = edge === "start" ? slot.start : slot.end - size;
+      blocks.push(session(snapshot, a, { start, end: start + size }));
+      if (edge === "start") slot.start += size;
+      else slot.end -= size;
       remaining -= size;
     }
     if (!remaining) break;
   }
-  return blocks;
+  return blocks.sort((a, b) => a.start - b.start);
 }
 
 function* options(
@@ -268,11 +271,13 @@ function* options(
         : null;
     for (const order of windowOrders(free, consecutive, a.group !== null)) {
       if (!a.group) {
-        const blocks = individualChunks(snapshot, a, order, need);
-        const key = JSON.stringify(blocks);
-        if (!seen.has(key)) {
-          seen.add(key);
-          yield blocks;
+        for (const edge of ["start", "end"] as const) {
+          const blocks = individualChunks(snapshot, a, order, need, edge);
+          const key = JSON.stringify(blocks);
+          if (!seen.has(key)) {
+            seen.add(key);
+            yield blocks;
+          }
         }
         continue;
       }
