@@ -37,6 +37,7 @@ export class Identity {
       googleCallbackOrigin?: string;
       encryptionKey: string;
       googleEnabled: boolean;
+      allowedEmails?: ReadonlySet<string>;
     },
     readonly now: () => Date = () => new Date(),
   ) {
@@ -60,6 +61,8 @@ export class Identity {
   }
   async challenge(email: string, intent: "register" | "login") {
     const normalized = email.trim().toLowerCase();
+    if (this.config.allowedEmails && !this.config.allowedEmails.has(normalized))
+      throw new DomainError(403, "STAGING_ACCESS_REQUIRED", "Usa una cuenta autorizada para esta prueba.");
     const lookup = this.secrets.fingerprint(normalized);
     const client = await this.pool.connect();
     const now = this.now();

@@ -1,7 +1,10 @@
 import type { Writable } from "node:stream";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import Fastify, { LogController, type FastifyError } from "fastify";
 import swagger from "@fastify/swagger";
 import cookie from "@fastify/cookie";
+import staticFiles from "@fastify/static";
 import {
   ErrorResponse,
   Health,
@@ -34,6 +37,7 @@ export async function buildApp(
     imports?: ImportService;
     planning?: PlanningService;
     estimates?: Estimates;
+    webRoot?: string;
   } = {},
 ) {
   assertRuntime();
@@ -236,5 +240,25 @@ export async function buildApp(
   app.get("/api/v1/openapi.json", { schema: { hide: true } }, async () =>
     app.swagger(),
   );
+  if (options.webRoot) {
+    const index = await readFile(resolve(options.webRoot, "index.html"));
+    await app.register(staticFiles, {
+      root: resolve(options.webRoot, "assets"),
+      prefix: "/assets/",
+      index: false,
+      dotfiles: "deny",
+      wildcard: false,
+      decorateReply: false,
+      schemaHide: true,
+    });
+    app.get("/", { schema: { hide: true } }, async (_request, reply) =>
+      reply
+        .header("X-Robots-Tag", "noindex, nofollow")
+        .header("Content-Security-Policy",
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+        .type("text/html; charset=utf-8")
+        .send(index),
+    );
+  }
   return app;
 }

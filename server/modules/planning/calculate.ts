@@ -21,7 +21,12 @@ export async function calculatePlan(
   running++;
   try {
     const worker = new Worker(
-      new URL("./calculate-worker.ts", import.meta.url),
+      new URL(
+        import.meta.url.endsWith(".ts")
+          ? "./calculate-worker.ts"
+          : "./calculate-worker.js",
+        import.meta.url,
+      ),
       {
         workerData: snapshot,
         execArgv: [],

@@ -42,6 +42,7 @@ export class SupabaseProvider implements AuthProvider {
   constructor(
     private url: string,
     private anonKey: string,
+    private allowedEmails?: ReadonlySet<string>,
   ) {}
   private client(storage?: Record<string, string>) {
     const local = storage ?? {};
@@ -130,6 +131,9 @@ export class SupabaseProvider implements AuthProvider {
       const { data, error } = await this.client().auth.getUser(accessToken);
       if (error) throw (error.status ?? 500) >= 500 ? unavailable() : denied();
       if (!data.user) throw denied();
+      if (this.allowedEmails && (!data.user.email_confirmed_at ||
+          !this.allowedEmails.has(data.user.email?.trim().toLowerCase() ?? "")))
+        throw denied();
       return data.user.id;
     } catch (error) {
       if (error instanceof DomainError) throw error;

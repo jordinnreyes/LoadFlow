@@ -12,6 +12,7 @@ import { PlanningWorker } from "./modules/jobs/planning-worker.js";
 import { localImports } from "./modules/imports/local.js";
 import { localEstimates } from "./modules/estimates/local.js";
 const config = runtimeConfig();
+const staging = config.mode === "staging" ? config : undefined;
 if (!config.databaseUrl)
   throw new Error("Falta DATABASE_URL. Consulta .env.example y README.");
 const db = database(config.databaseUrl);
@@ -19,21 +20,23 @@ const required = [
   "IDENTITY_DATABASE_URL",
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
   "CREDENTIAL_ENCRYPTION_KEY",
 ] as const;
 for (const name of required)
   if (!process.env[name])
     throw new Error(`Falta ${name}; consulta configuración local.`);
 if (
-  !loopback(config.databaseUrl) ||
-  !loopback(process.env.IDENTITY_DATABASE_URL!) ||
-  !loopback(process.env.SUPABASE_URL!)
+  !staging &&
+  (!loopback(config.databaseUrl) ||
+    !loopback(process.env.IDENTITY_DATABASE_URL!) ||
+    !loopback(process.env.SUPABASE_URL!))
 )
   throw new Error(
     "F0/F1 se ejecuta solo con la infraestructura local autorizada.",
   );
-const identityDb = database(process.env.IDENTITY_DATABASE_URL!);
+const identityDb = database(
+  staging?.identityDatabaseUrl ?? process.env.IDENTITY_DATABASE_URL!,
+);
 await assertApplicationRoles(db.pool, identityDb.pool);
 const academics = new Academics(db.pool);
 const identity = new Identity(
@@ -41,6 +44,7 @@ const identity = new Identity(
   new SupabaseProvider(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_ANON_KEY!,
+    staging?.allowedEmails,
   ),
   academics,
   {
@@ -48,6 +52,7 @@ const identity = new Identity(
     googleCallbackOrigin: config.oauthCallbackOrigin,
     encryptionKey: process.env.CREDENTIAL_ENCRYPTION_KEY!,
     googleEnabled: process.env.GOOGLE_AUTH_ENABLED === "true",
+    allowedEmails: staging?.allowedEmails,
   },
 );
 const calendar = new CalendarService(
@@ -66,18 +71,25 @@ const calendar = new CalendarService(
 const worker = new CalendarWorker(calendar);
 const planning = new PlanningService(identity, calendar);
 const planningWorker = new PlanningWorker(planning);
-const imports = await localImports(
-  identity,
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+if (!staging && !process.env.SUPABASE_SERVICE_ROLE_KEY)
+  throw new Error("Falta SUPABASE_SERVICE_ROLE_KEY para importación local.");
+const imports = staging
+  ? undefined
+  : await localImports(
+      identity,
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
 const app = await buildApp({
   logger: true,
   identity,
   calendar,
   planning,
-  imports: imports.service,
-  estimates: localEstimates(academics, process.env.CREDENTIAL_ENCRYPTION_KEY!),
+  imports: imports?.service,
+  estimates: staging
+    ? undefined
+    : localEstimates(academics, process.env.CREDENTIAL_ENCRYPTION_KEY!),
+  webRoot: staging ? "dist" : undefined,
   ready: async () => {
     await db.pool.query("select 1");
   },
@@ -107,9 +119,10 @@ stopPlanning = planningWorker.start(() =>
     "Planning queue could not advance",
   ),
 );
-stopImports = imports.worker.start(() =>
-  app.log.error(
-    { code: "IMPORT_WORKER_FAILED" },
-    "Import queue could not advance",
-  ),
-);
+if (imports)
+  stopImports = imports.worker.start(() =>
+    app.log.error(
+      { code: "IMPORT_WORKER_FAILED" },
+      "Import queue could not advance",
+    ),
+  );
