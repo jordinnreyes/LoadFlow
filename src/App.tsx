@@ -89,7 +89,7 @@ export default function App() {
       ? "Importar actividades"
       : nav?.label || "Mi planificación";
   useEffect(() => {
-    document.title = `${w ? pageLabel : "Acceso"} · CargaWise`;
+    document.title = `${w ? pageLabel : "Acceso"} · WiseLoad`;
   }, [page, !!w]);
   useEffect(() => {
     if (w && page === "acceso") navigate("/tablero");
@@ -193,7 +193,7 @@ export default function App() {
             <span className="brand-mark">
               <Icon name="book" size={23} />
             </span>
-            CargaWise
+            WiseLoad
           </a>
           <div className="workspace-label">MI ESPACIO ACADÉMICO</div>
           <nav aria-label="Navegación principal">
@@ -232,13 +232,13 @@ export default function App() {
             <a
               className="mobile-brand"
               href="#/tablero"
-              aria-label="CargaWise · Tablero"
+              aria-label="WiseLoad · Tablero"
             >
               <span className="brand-mark">
                 <Icon name="book" size={20} />
               </span>
               <span>
-                CargaWise<small>{pageLabel}</small>
+                WiseLoad<small>{pageLabel}</small>
               </span>
             </a>
             <div className="breadcrumb">
@@ -367,7 +367,7 @@ export default function App() {
             )}
           </main>
           <footer className="app-footer">
-            <span>CargaWise · Un poco más de perspectiva.</span>
+            <span>WiseLoad · Un poco más de perspectiva.</span>
             <span>Solo demostración local · sin servicios externos</span>
           </footer>
         </div>

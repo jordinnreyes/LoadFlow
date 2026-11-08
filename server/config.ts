@@ -1,7 +1,7 @@
 export function assertRuntime() {
   if (Number(process.versions.node.split(".")[0]) !== 24)
     throw new Error(
-      "CargaWise backend requiere Node 24. Usa .node-version o el runtime local documentado.",
+      "WiseLoad backend requiere Node 24. Usa .node-version o el runtime local documentado.",
     );
 }
 export function loopback(url: string) {

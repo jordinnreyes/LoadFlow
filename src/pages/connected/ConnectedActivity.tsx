@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Temporal } from "@js-temporal/polyfill";
 import {
   academics,
   activityPath,
@@ -97,9 +98,10 @@ function ActivityFields({
   reload: () => void;
 }) {
   const write = useWrite(screen.session, screen.expired);
-  const [view, setView] = useState<"detail" | "edit" | "progress" | "date">(
-    activity ? "detail" : "edit",
-  );
+  const [view, setView] = useState<
+    "detail" | "edit" | "progress" | "date" | "constraints"
+  >(activity ? "detail" : "edit");
+  const [startNow, setStartNow] = useState<string | null>(null);
   const [dateProposal, setDateProposal] = useState(initialProposal);
   const [inputError, setInputError] = useState("");
   const [type, setType] = useState<CreateActivity["type"]>(
@@ -108,10 +110,44 @@ function ActivityFields({
   const revision = activity ? `"activity-${activity.revision}"` : null;
   const path = activity ? activityPath(activity.id) : "/activities";
   const zone = activity?.timezone ?? screen.zone;
+  const savedStart =
+    zone && activity?.allowedStartAt
+      ? Temporal.Instant.from(activity.allowedStartAt)
+          .toZonedDateTimeISO(zone)
+          .toPlainDateTime()
+          .toString({ smallestUnit: "minute" })
+      : "";
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     setInputError("");
+    if (view === "constraints" && activity) {
+      try {
+        const start = text(form, "start");
+        const body = {
+          divisibility: text(form, "divisibility"),
+          ...(startNow
+            ? { allowedStartAt: startNow }
+            : zone && start !== savedStart
+              ? { allowedStartAt: start ? localInstant(start, zone) : null }
+              : {}),
+        };
+        if (
+          await write.run({
+            method: "PUT",
+            path: `${path}/constraints`,
+            revision,
+            body,
+          })
+        )
+          reload();
+      } catch {
+        setInputError(
+          "Revisa la fecha y hora de inicio en tu zona de estudio.",
+        );
+      }
+      return;
+    }
     if (view === "progress" && activity) {
       const progress: Progress = {
         realTotalMinutes: number(form, "actual"),
@@ -231,6 +267,9 @@ function ActivityFields({
           <p>{activity.description}</p>
           <div className="form-actions">
             <Button onClick={() => setView("edit")}>Editar datos</Button>
+            <Button onClick={() => setView("constraints")}>
+              Configurar preparación
+            </Button>
             <Button onClick={() => setView("date")}>Actualizar fecha</Button>
             <Button onClick={() => setView("progress")}>
               Registrar progreso
@@ -315,23 +354,52 @@ function ActivityFields({
                   <option>Baja</option>
                 </select>
               </Field>
-              {!activity && (
-                <>
-                  {zone && (
-                    <Field label="Inicio permitido">
-                      <input name="start" type="datetime-local" />
-                    </Field>
-                  )}
-                  <Field label="Divisibilidad">
-                    <select name="divisibility">
-                      <option value="unknown">Por confirmar</option>
-                      <option value="divisible">Divisible</option>
-                      <option value="indivisible">Un solo bloque</option>
-                    </select>
-                  </Field>
-                </>
+              {!activity && zone && (
+                <Field label="Inicio permitido">
+                  <input name="start" type="datetime-local" />
+                </Field>
               )}
             </>
+          )}
+          {view === "constraints" && (
+            <>
+              <label className="check-field">
+                <input
+                  type="checkbox"
+                  checked={startNow !== null}
+                  onChange={(event) =>
+                    setStartNow(
+                      event.target.checked ? new Date().toISOString() : null,
+                    )
+                  }
+                />
+                Puedo empezar desde ahora
+              </label>
+              {zone ? (
+                <Field label={`Inicio permitido (${zone})`}>
+                  <input
+                    name="start"
+                    type="datetime-local"
+                    defaultValue={savedStart}
+                    disabled={startNow !== null}
+                  />
+                </Field>
+              ) : (
+                <p>Confirma tu zona de estudio para indicar otra fecha.</p>
+              )}
+            </>
+          )}
+          {(view === "constraints" || (view === "edit" && !activity)) && (
+            <Field label="Divisibilidad">
+              <select
+                name="divisibility"
+                defaultValue={activity?.divisibility ?? "unknown"}
+              >
+                <option value="unknown">Por confirmar</option>
+                <option value="divisible">Divisible</option>
+                <option value="indivisible">Un solo bloque</option>
+              </select>
+            </Field>
           )}
           {(view === "date" || !activity) && (
             <>

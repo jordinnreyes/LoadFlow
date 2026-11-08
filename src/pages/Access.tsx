@@ -35,7 +35,7 @@ export default function Access({ onWelcome }: { onWelcome: () => void }) {
           <span className="brand-mark">
             <Icon name="book" size={24} />
           </span>
-          CargaWise
+          WiseLoad
         </a>
         <div className="story-content">
           <Badge tone="info" icon="book">

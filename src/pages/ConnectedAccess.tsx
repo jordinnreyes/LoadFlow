@@ -56,7 +56,7 @@ export default function ConnectedAccess({
           <span className="brand-mark">
             <Icon name="book" size={24} />
           </span>
-          CargaWise
+          WiseLoad
         </div>
         <div className="story-content">
           <h1>
@@ -68,7 +68,7 @@ export default function ConnectedAccess({
         </div>
       </section>
       <section className="access-form">
-        <Badge tone="info">Tu cuenta CargaWise</Badge>
+        <Badge tone="info">Tu cuenta WiseLoad</Badge>
         <div className="access-form-inner">
           {!challenge && (
             <div className="segmented" role="group" aria-label="Tipo de acceso">

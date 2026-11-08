@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application android:networkSecurityConfig="@xml/cw_f0_network_security">
         <activity android:name=".HttpsProbeActivity" android:exported="true"
-            android:label="CargaWise HTTPS F0" android:theme="@style/AppTheme.NoActionBarLaunch">
+            android:label="WiseLoad HTTPS F0" android:theme="@style/AppTheme.NoActionBarLaunch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

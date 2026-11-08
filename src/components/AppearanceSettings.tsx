@@ -11,7 +11,7 @@ export function AppearanceSettings() {
       <div
         className="appearance-options segmented"
         role="group"
-        aria-label="Tema de CargaWise"
+        aria-label="Tema de WiseLoad"
       >
         <button
           type="button"

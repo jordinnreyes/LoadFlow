@@ -574,7 +574,7 @@ function ConnectedCalendar({
           tone="warning"
           title="No se completó la autorización de Calendar"
         >
-          Usa la misma cuenta de Google que conectaste a CargaWise Calendar y
+          Usa la misma cuenta de Google que conectaste a WiseLoad y
           acepta los permisos solicitados.
         </Notice>
       )}

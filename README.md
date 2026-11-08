@@ -1,4 +1,4 @@
-# CargaWise
+# WiseLoad
 
 ## Estado del proyecto
 
@@ -221,7 +221,7 @@ El prototipo se detiene en revisión visual e interactiva. No establece arquitec
 
 ## Refinamiento visual con referencias de Stitch · 2 de noviembre de 2026
 
-Se mantiene una web responsive con React 19, TypeScript, Vite y CSS propio; no es PWA ni app nativa. La marca visible es CargaWise. Se ajustaron tokens, superficies, jerarquía de horas, tarjetas de actividad, agenda, revisión de importaciones, encabezado y componentes compartidos mediante estilos. La tabla de revisión permanece en escritorio y los mismos campos se presentan como tarjetas en móvil. Las referencias aportan estética, no reglas ni datos.
+Se mantiene una web responsive con React 19, TypeScript, Vite y CSS propio; no es PWA ni app nativa. La marca visible es WiseLoad. Se ajustaron tokens, superficies, jerarquía de horas, tarjetas de actividad, agenda, revisión de importaciones, encabezado y componentes compartidos mediante estilos. La tabla de revisión permanece en escritorio y los mismos campos se presentan como tarjetas en móvil. Las referencias aportan estética, no reglas ni datos.
 
 Se conservaron rutas, estado local, datos ficticios y reglas. PRD-v6.md y UX-FLOWS.md permanecen sin cambios. La paleta y radios actualizados se reflejan en DESIGN-SYSTEM.md. El tablero sigue como vista principal y el calendario como complemento; una ocupación porcentual baja no demuestra viabilidad ante restricciones por plazo.
 

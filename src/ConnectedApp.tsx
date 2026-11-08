@@ -264,7 +264,7 @@ function Workspace({
             <span className="brand-mark">
               <Icon name="book" />
             </span>
-            CargaWise
+            WiseLoad
           </a>
           <div className="workspace-label">MI ESPACIO ACADÉMICO</div>
           <nav aria-label="Navegación principal">{links(NAV)}</nav>
@@ -275,7 +275,7 @@ function Workspace({
               <span className="brand-mark">
                 <Icon name="book" />
               </span>
-              CargaWise
+              WiseLoad
             </a>
             <span className="breadcrumb">Mi espacio académico</span>
             <div className="topbar-right">

@@ -12,6 +12,7 @@ import { SupabaseProvider } from "../../server/modules/identity/provider.js";
 import { buildApp } from "../../server/app.js";
 import { Secrets, hash } from "../../server/modules/identity/crypto.js";
 import type { IdentityProof } from "../../server/modules/identity/provider.js";
+import { mailCode } from "./mailpit.js";
 
 const origin = "http://127.0.0.1:3001";
 for (const key of [
@@ -24,28 +25,6 @@ for (const key of [
 ])
   if (!process.env[key])
     throw new Error(`Falta ${key}: identidad requiere la pila local real.`);
-async function mailCode(email: string) {
-  for (let attempt = 0; attempt < 20; attempt++) {
-    const list = (await fetch("http://127.0.0.1:54324/api/v1/messages").then(
-      (r) => r.json(),
-    )) as { messages: { ID: string; To: { Address: string }[] }[] };
-    const item = list.messages.find((m) =>
-      m.To.some((to) => to.Address.toLowerCase() === email),
-    );
-    if (item) {
-      const message = (await fetch(
-        `http://127.0.0.1:54324/api/v1/message/${item.ID}`,
-      ).then((r) => r.json())) as { Text: string; HTML: string };
-      const code = (message.Text + " " + message.HTML).match(/\b\d{6}\b/)?.[0];
-      if (code) return code;
-      throw new Error(
-        "El mensaje capturado no contiene un OTP: revisa las plantillas, sin volcar el correo.",
-      );
-    }
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  throw new Error("No llegó el correo capturado al Mailpit local.");
-}
 
 test("existing account logs in through real OTP without repeating onboarding or losing courses", async () => {
   const db = database(process.env.DATABASE_URL!),

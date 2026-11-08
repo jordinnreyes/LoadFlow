@@ -57,7 +57,7 @@ export async function buildApp(
     transformObject: documentProtocol,
     openapi: {
       openapi: "3.1.0",
-      info: { title: "CargaWise API", version: "0.1.0" },
+      info: { title: "WiseLoad API", version: "0.1.0" },
       servers: [{ url: "/" }],
       components: {
         securitySchemes: {

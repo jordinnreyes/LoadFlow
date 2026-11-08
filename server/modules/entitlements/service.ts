@@ -15,7 +15,7 @@ const policy = {
   personalization: {
     version: personalizationConsentVersion,
     notice:
-      "Autorizo a CargaWise a usar mi historial de esfuerzo y horas reales para ajustar sugerencias cuando la personalización esté disponible. Puedes retirar el consentimiento en cualquier momento.",
+      "Autorizo a WiseLoad a usar mi historial de esfuerzo y horas reales para ajustar sugerencias cuando la personalización esté disponible. Puedes retirar el consentimiento en cualquier momento.",
   },
 };
 

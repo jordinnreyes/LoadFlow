@@ -1,4 +1,4 @@
-# Desarrollo CargaWise · F0–F4
+# Desarrollo WiseLoad · F0–F4
 
 Continuación F2: [disponibilidad y Calendar](./F2-DEVELOPMENT.md). Los resultados F0/F1 que siguen son evidencia histórica; el estado actual de ejecución se registra en PLAN §16.
 
@@ -23,6 +23,8 @@ En otra terminal ejecuta `& ./scripts/dev.ps1 run dev` y abre `http://127.0.0.1:
 Para la revisión manual OAuth, usa **Continuar con Google** en la web local. Tras volver al tablero, abre **Disponibilidad y Calendar** y pulsa **Conectar Google Calendar**. Google solicita lista de calendarios, ocupación y lectura de eventos en el mismo consentimiento. Al volver, elige un calendario de prueba, confirma la zona si falta y pulsa **Guardar y sincronizar**. En **Calendario**, comprueba los bloques de ocupación, la cuadrícula de 24 horas en Semana y el control **Mostrar/Ocultar títulos**. Las consultas manuales se encolan con un mínimo de 3 s tras el trabajo anterior. Los callbacks llegan al puerto 3001 y redirigen al origen web de confianza en 5173. Si no hay un cliente OAuth configurado, el acceso por correo y la disponibilidad manual siguen disponibles.
 
 `npm run test:e2e:real` usa la pila local, dos contextos Chromium del mismo propietario y otro propietario sintético. Requiere también Docker y la imagen aislada de importación. Comprueba persistencia, revisión obsoleta, subida y confirmación parcial, restauración de posición en Calendario y estimación Premium con proveedor simulado. Con `CW_F6_CAPTURE=1` guarda capturas sintéticas en `.local/f6-final-visual`. El flujo OAuth de Google real requiere una cuenta autorizada y una prueba interactiva.
+
+Para repetir F7-01, ejecuta `npm run build` y luego `npm run test:e2e:f7` con esa misma pila y Mailpit local. Usa el build web, crea una cuenta sintética con OTP e importa `tests/fixtures/imports/anexo.xlsx` con el parser aislado. El puerto local predeterminado es 5190 y se puede cambiar con `CW_F7_E2E_PORT`.
 
 Para ensayar la estimación Premium con OpenAI en la web local, se requiere autorización de consumo, un derecho Premium vigente concedido por el operador y el consentimiento de análisis. `ESTIMATES_LOCAL_ENABLED=true` habilita el adaptador local con `OPENAI_API_KEY` y la política de desarrollo de F5. El modo predeterminado conserva el adaptador deshabilitado.
 
@@ -107,7 +109,7 @@ El reloj y proveedor de las pruebas de concurrencia/OAuth son dobles explícitos
 
 El callback `/api/v1/auth/google/callback` devuelve **200 JSON de sesión** a clientes de API. En navegación HTML emite la cookie privada y vuelve al tablero del origen configurado. Calendar devuelve su estado en JSON y vuelve a Disponibilidad desde navegador. Para comprobar sesión después del ingreso usa `/api/v1/auth/session` en el mismo navegador. Inicia un nuevo flujo para repetir un callback consumido.
 
-Para probar rechazo con una cuenta Google ya autorizada usar `/api/v1/auth/google/start?prompt=consent` después de logout: fuerza una nueva pantalla de consentimiento mediante el parámetro oficial del proveedor. Solo se admite ese valor; el enlace normal conserva su comportamiento anterior. Logout de CargaWise no cierra la cuenta Google del navegador. Callback acepta error/error_code/error_description limitados, no refleja sus textos, consume la transacción y devuelve 401 sin emitir una sesión en cancelación. Google Android queda para AM-01.
+Para probar rechazo con una cuenta Google ya autorizada usar `/api/v1/auth/google/start?prompt=consent` después de logout: fuerza una nueva pantalla de consentimiento mediante el parámetro oficial del proveedor. Solo se admite ese valor; el enlace normal conserva su comportamiento anterior. Logout de WiseLoad no cierra la cuenta Google del navegador. Callback acepta error/error_code/error_description limitados, no refleja sus textos, consume la transacción y devuelve 401 sin emitir una sesión en cancelación. Google Android queda para AM-01.
 
 La prueba de migraciones crea una base PostgreSQL efímera con nombre validado en el contenedor propio y un fixture mínimo `auth.users` para FK, aplica las tres migraciones y repite, y elimina únicamente esa base. La BD principal sigue intacta; allí también se probó actualización desde F0. El 04/11 el promotor aportó captura CI Success de `254370c`; posteriormente se publicó `d255d8f` y se verificó directamente su [CI 41785099991](https://github.com/jordinnreyes/LoadFlow/actions/runs/41785099991): Success global y jobs/steps de frontend Ubuntu/Windows y database correctos. No acredita Android; detalle en PLAN §15. El checkout limpio se comprobó para F0, no se atribuye a un release publicado.
 

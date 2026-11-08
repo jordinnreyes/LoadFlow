@@ -10,6 +10,7 @@
     "test": "node --import tsx --test tests/rules.test.ts",
     "test:e2e": "node scripts/browser.mjs test",
     "test:e2e:real": "node --env-file=.env --import tsx --test tests/e2e-real/workspace.test.ts",
+    "test:e2e:f7": "node --env-file=.env --import tsx --test tests/e2e-real/f7-flow.test.ts",
     "setup:browser": "node scripts/browser.mjs install chromium",
     "format": "prettier --write src tests scripts vite.config.ts playwright.config.ts index.html README.md",
     "check:server": "tsc -p server/tsconfig.json",

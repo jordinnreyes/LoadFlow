@@ -21,6 +21,7 @@ export async function fixture(
   calendarProvider?: CalendarProvider,
   importService?: (identity: Identity) => ImportService,
   estimateService?: (academics: Academics) => Estimates,
+  authProvider?: AuthProvider,
 ) {
   const db = database(process.env.DATABASE_URL!),
     ids = database(process.env.IDENTITY_DATABASE_URL!);
@@ -53,7 +54,7 @@ export async function fixture(
   );
   const identity = new Identity(
     ids.pool,
-    provider,
+    authProvider ?? provider,
     academics,
     {
       origin: "http://127.0.0.1:3001",

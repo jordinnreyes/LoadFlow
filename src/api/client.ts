@@ -39,7 +39,7 @@ function unavailable(status: number, requestId = "") {
   return new ApiError(status, {
     code: "API_UNAVAILABLE",
     message:
-      "No se pudo completar la conexión con CargaWise. Intenta de nuevo.",
+      "No se pudo completar la conexión con WiseLoad. Intenta de nuevo.",
     fieldErrors: [],
     requestId,
     retryable: true,
