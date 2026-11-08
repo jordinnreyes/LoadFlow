@@ -70,6 +70,23 @@ function EstimateFields({
   );
   const write = useWrite(screen.session, screen.expired);
   const [estimate, setEstimate] = useState<Estimate>();
+  const [excerpt, setExcerpt] = useState("");
+  const [reviewed, setReviewed] = useState(false);
+  const sourcePath = `${activityPath(activity.id)}/estimate-source`;
+  const canReadSource = consents.data?.[0].data.granted;
+  const source = useRead(
+    canReadSource ? activity.id : "",
+    async (signal) =>
+      canReadSource
+        ? (
+            await request<Response<"getEstimateSource", 200>>(
+              endpoint(sourcePath),
+              { signal },
+            )
+          ).data
+        : null,
+    screen.expired,
+  );
   const pending = useRead(
     estimate?.id ?? "",
     async (signal) =>
@@ -119,6 +136,10 @@ function EstimateFields({
               ) {
                 consents.reload();
                 setEstimate(undefined);
+                if (index === 0) {
+                  setExcerpt("");
+                  setReviewed(false);
+                }
               }
             }}
           >
@@ -126,6 +147,38 @@ function EstimateFields({
           </Button>
         </details>
       ))}
+      {analysis.data.granted && source.data?.available && (
+        <form
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const node = event.currentTarget;
+            const preview = await write.run<
+              Response<"previewEstimateSource", 200>
+            >({
+              path: sourcePath,
+              body: new FormData(node),
+            });
+            if (preview) {
+              setExcerpt(preview.excerpt);
+              setReviewed(false);
+              node.reset();
+            }
+          }}
+        >
+          <p>{source.data.message}</p>
+          <Field label="Mismo archivo de la importación">
+            <input type="file" name="file" accept=".pdf,.xlsx" required />
+          </Field>
+          <Button type="submit" disabled={write.busy}>
+            Preparar fragmento para revisar
+          </Button>
+        </form>
+      )}
+      {analysis.data.granted && source.error && (
+        <Notice title="No se pudo consultar la fuente importada">
+          Puedes pegar un fragmento revisado.
+        </Notice>
+      )}
       {analysis.data.granted && (
         <form
           onSubmit={async (event) => {
@@ -147,7 +200,16 @@ function EstimateFields({
           }}
         >
           <Field label="Fragmento del enunciado">
-            <textarea required name="excerpt" maxLength={2400} />
+            <textarea
+              required
+              name="excerpt"
+              maxLength={2400}
+              value={excerpt}
+              onChange={(event) => {
+                setExcerpt(event.currentTarget.value);
+                setReviewed(false);
+              }}
+            />
           </Field>
           <Field label="Tamaño">
             <select name="size">
@@ -158,7 +220,12 @@ function EstimateFields({
             </select>
           </Field>
           <label className="check-field">
-            <input type="checkbox" required />
+            <input
+              type="checkbox"
+              required
+              checked={reviewed}
+              onChange={(event) => setReviewed(event.currentTarget.checked)}
+            />
             Revisé el fragmento y retiré los datos personales.
           </label>
           <Button

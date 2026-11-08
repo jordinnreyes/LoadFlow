@@ -210,3 +210,23 @@ export async function extractXlsx(bytes: Buffer) {
       : [],
   };
 }
+
+export async function xlsxExcerpt(bytes: Buffer, unit: number, row: number) {
+  const metadata = await inspect(bytes);
+  const sheet = (await readXlsxFile(bytes, { trim: true }))[unit - 1];
+  if (!sheet) throw new FileIssue("FILE_INVALID_REQUEST");
+  return (
+    sourceRows(sheet.data, metadata[unit - 1])
+      .find((source) => source.row === row)
+      ?.cells.flatMap(({ value }) =>
+        value == null || value === ""
+          ? []
+          : [
+              value instanceof Date
+                ? value.toISOString().slice(0, 10)
+                : String(value),
+            ],
+      )
+      .join(" · ") ?? ""
+  );
+}

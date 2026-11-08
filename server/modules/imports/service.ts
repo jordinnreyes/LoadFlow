@@ -26,6 +26,7 @@ import {
   type Extracted,
   type Extraction,
   type FileKind,
+  type ExcerptLocation,
 } from "./extraction/model.js";
 import { simplify } from "./extraction/recognize.js";
 import type { ImportStorage } from "./storage.js";
@@ -852,7 +853,46 @@ export class ImportService {
     return r.sha256 === digest(bytes);
   }
 
-  // F5 must call this only after its own entitlement/consent checks. The old
+  async estimateSources(owner: string, activityId: string) {
+    return this.academics.read(owner, (ctx) =>
+      rows<{ document_id: string; sha256: string; locator: ExcerptLocation }>(
+        ctx,
+        sql`select d.id as document_id,d.sha256,s.locator
+          from app.activity_sources s
+          join app.import_candidates c on c.owner_id=s.owner_id and c.id=s.candidate_id
+          join app.imports i on i.owner_id=c.owner_id and i.id=c.import_id
+          join app.documents d on d.owner_id=i.owner_id and d.id=i.document_id
+          where s.owner_id=${owner} and s.activity_id=${activityId}
+            and i.status='review' and d.sha256 is not null
+            and (i.review_expires_at is null or i.review_expires_at>${this.now().toISOString()})
+          order by d.created_at desc,c.ordinal,s.id`,
+      ),
+    );
+  }
+
+  async estimateSource(owner: string, activityId: string, bytes: Buffer) {
+    const sources = await this.estimateSources(owner, activityId);
+    if (!sources.length)
+      throw conflict(
+        "DOCUMENT_SOURCE_REMOVED",
+        "La actividad no tiene un archivo importado disponible para verificar.",
+      );
+    const checksum = digest(bytes);
+    const source = sources.find((item) => item.sha256 === checksum);
+    if (!source)
+      throw invalid(
+        "DOCUMENT_REUPLOAD_MISMATCH",
+        "Sube el mismo archivo que se usó para esta importación.",
+      );
+    const verified = await this.requireAnalysisReupload(
+      owner,
+      source.document_id,
+      bytes,
+    );
+    return { ...verified, locator: source.locator };
+  }
+
+  // Called after the Premium entitlement/consent checks. The old
   // Storage object is never an analysis source, including while deletion retries.
   async requireAnalysisReupload(
     owner: string,

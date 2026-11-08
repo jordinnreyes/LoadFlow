@@ -384,7 +384,7 @@ function statement(pages: Page[], course: Cell | undefined, filename: string) {
   ];
 }
 
-export async function extractPdf(bytes: Buffer, filename: string) {
+async function readPages(bytes: Buffer, unit?: number) {
   const document = getDocument({
     data: new Uint8Array(bytes),
     stopAtErrors: true,
@@ -399,9 +399,11 @@ export async function extractPdf(bytes: Buffer, filename: string) {
   try {
     const pdf = await document.promise;
     if (pdf.numPages > limits.pdfPages) throw new FileIssue("PDF_PAGES_LIMIT");
+    if (unit !== undefined && unit > pdf.numPages)
+      throw new FileIssue("FILE_INVALID_REQUEST");
     const pages: Page[] = [];
     let items = 0;
-    for (let index = 1; index <= pdf.numPages; index++) {
+    for (let index = unit ?? 1; index <= (unit ?? pdf.numPages); index++) {
       const page = await pdf.getPage(index);
       const content = await page.getTextContent();
       items += content.items.length;
@@ -425,52 +427,7 @@ export async function extractPdf(bytes: Buffer, filename: string) {
       });
       page.cleanup();
     }
-    const first = pages.flatMap((p) => p.lines.slice(0, 12));
-    const courseLine = first.find(
-      (l) =>
-        !printed.test(l.text) &&
-        !/^(?:malla|plan|semestre|ciclo|periodo|ano|anio)\b/.test(
-          simplify(l.text),
-        ) &&
-        courseCode.test(l.text),
-    );
-    const code = courseLine?.text.match(courseCode)?.[0];
-    const labelledCourse = first.find((l) =>
-      /^(?:curso|asignatura|course)\s*:/i.test(l.text),
-    );
-    const course = code
-      ? cell(code, Math.round(courseLine!.blocks[0].x))
-      : labelledCourse
-        ? cell(labelledCourse.text.split(":").slice(1).join(":").trim())
-        : undefined;
-    const table = tableCandidates(pages, course);
-    const syllabus = syllabusCandidates(pages, course);
-    const candidates = table.rows.length
-      ? table.rows
-      : syllabus.length
-        ? syllabus
-        : table.sawTable
-          ? []
-          : statement(pages, course, filename);
-    const units = pages.map((p) => ({
-      index: p.index,
-      name: null,
-      state: !p.lines.length
-        ? ("no_text" as const)
-        : candidates.some((c) => c.locator.unit === p.index)
-          ? ("recognized" as const)
-          : ("unrecognized" as const),
-    }));
-    return {
-      candidates,
-      units,
-      warnings: [
-        ...(units.some((u) => u.state === "no_text")
-          ? ["PDF_PAGES_WITHOUT_TEXT"]
-          : []),
-        ...(!candidates.length ? ["MANUAL_ENTRY_AVAILABLE"] : []),
-      ],
-    };
+    return pages;
   } catch (error) {
     if (error instanceof Error && error.name === "PasswordException")
       throw new FileIssue("FILE_PROTECTED");
@@ -478,4 +435,62 @@ export async function extractPdf(bytes: Buffer, filename: string) {
   } finally {
     await document.destroy();
   }
+}
+
+export async function pdfExcerpt(bytes: Buffer, unit: number) {
+  const [page] = await readPages(bytes, unit);
+  return page.lines
+    .filter((line) => !printed.test(line.text))
+    .map((line) => line.text)
+    .join("\n");
+}
+
+export async function extractPdf(bytes: Buffer, filename: string) {
+  const pages = await readPages(bytes);
+  const first = pages.flatMap((p) => p.lines.slice(0, 12));
+  const courseLine = first.find(
+    (l) =>
+      !printed.test(l.text) &&
+      !/^(?:malla|plan|semestre|ciclo|periodo|ano|anio)\b/.test(
+        simplify(l.text),
+      ) &&
+      courseCode.test(l.text),
+  );
+  const code = courseLine?.text.match(courseCode)?.[0];
+  const labelledCourse = first.find((l) =>
+    /^(?:curso|asignatura|course)\s*:/i.test(l.text),
+  );
+  const course = code
+    ? cell(code, Math.round(courseLine!.blocks[0].x))
+    : labelledCourse
+      ? cell(labelledCourse.text.split(":").slice(1).join(":").trim())
+      : undefined;
+  const table = tableCandidates(pages, course);
+  const syllabus = syllabusCandidates(pages, course);
+  const candidates = table.rows.length
+    ? table.rows
+    : syllabus.length
+      ? syllabus
+      : table.sawTable
+        ? []
+        : statement(pages, course, filename);
+  const units = pages.map((p) => ({
+    index: p.index,
+    name: null,
+    state: !p.lines.length
+      ? ("no_text" as const)
+      : candidates.some((c) => c.locator.unit === p.index)
+        ? ("recognized" as const)
+        : ("unrecognized" as const),
+  }));
+  return {
+    candidates,
+    units,
+    warnings: [
+      ...(units.some((u) => u.state === "no_text")
+        ? ["PDF_PAGES_WITHOUT_TEXT"]
+        : []),
+      ...(!candidates.length ? ["MANUAL_ENTRY_AVAILABLE"] : []),
+    ],
+  };
 }

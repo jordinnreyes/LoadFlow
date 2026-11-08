@@ -65,12 +65,14 @@ export function ConnectedWeek({
   first,
   offset,
   setOffset,
+  calendarPositions,
   calendar,
 }: {
   screen: Screen;
   first: string;
   offset: number;
   setOffset: (offset: number) => void;
+  calendarPositions: Map<string, { top: number; left: number }>;
   calendar: boolean;
 }) {
   const { period, session, expired } = screen;
@@ -122,6 +124,7 @@ export function ConnectedWeek({
   const data = read.data;
   const week = data?.weekly.weeks[0];
   const zone = data?.weekly.timezone ?? screen.zone;
+  const calendarPositionKey = `${period.id}:${start}:${zone}`;
   const calendarRange =
     calendar && zone
       ? {
@@ -415,6 +418,9 @@ export function ConnectedWeek({
       )}
       {calendar && calendarView === "week" && week && (
         <WeeklyCalendar
+          key={calendarPositionKey}
+          positionKey={calendarPositionKey}
+          positions={calendarPositions}
           start={start}
           zone={zone}
           google={blocks}

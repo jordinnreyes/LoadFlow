@@ -138,6 +138,26 @@ export class Estimates {
     return rows[0];
   }
 
+  private eligible(activity: { type: string; preparationState: string }) {
+    if (
+      activity.type === "Entrega grupal" ||
+      activity.preparationState === "done"
+    )
+      throw new DomainError(
+        422,
+        "ESTIMATE_INELIGIBLE",
+        "La estimación requiere una actividad individual con preparación abierta.",
+      );
+  }
+
+  async authorizeSource(owner: string, activityId: string) {
+    await this.academics.read(owner, async (ctx) => {
+      const activity = await this.academics.requireActivity(ctx, activityId);
+      await this.rights(ctx);
+      this.eligible(activity);
+    });
+  }
+
   async request(
     owner: string,
     activityId: string,
@@ -166,15 +186,7 @@ export class Estimates {
         const activity = await this.academics.requireActivity(ctx, activityId);
         requireRevision(version, "activity", activity.revision);
         const { grant, consent } = await this.rights(ctx);
-        if (
-          activity.type === "Entrega grupal" ||
-          activity.preparationState === "done"
-        )
-          throw new DomainError(
-            422,
-            "ESTIMATE_INELIGIBLE",
-            "La estimación requiere una actividad individual con preparación abierta.",
-          );
+        this.eligible(activity);
         const now = this.academics.now();
         const calibration = policy.personalization
           ? await calibrationFor(

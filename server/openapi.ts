@@ -9,7 +9,11 @@ export const documentProtocol: SwaggerTransformObject = (document) => {
     for (const method of ["post", "put", "patch", "delete"] as const) {
       const operation = item[method];
       if (!operation) continue;
-      if (operation.operationId === "uploadImport") {
+      if (
+        ["uploadImport", "previewEstimateSource"].includes(
+          operation.operationId ?? "",
+        )
+      ) {
         operation.requestBody = {
           required: true,
           content: {
@@ -32,7 +36,10 @@ export const documentProtocol: SwaggerTransformObject = (document) => {
       )
         headers.push("X-CSRF-Token");
       if (!auth) {
-        if (path !== "/api/v1/calendar/authorization")
+        if (
+          path !== "/api/v1/calendar/authorization" &&
+          operation.operationId !== "previewEstimateSource"
+        )
           headers.push("Idempotency-Key");
         if (
           method !== "post" ||

@@ -46,6 +46,8 @@ export type Locator = {
   columns: Record<string, number>;
   sourceRows: Record<string, number>;
 };
+export type ExcerptLocation = Pick<Locator, "unit" | "row">;
+export const excerptLimit = 2400;
 export type Fields = {
   title: string | null;
   course: string | null;

@@ -1,4 +1,4 @@
-import { extract } from "./extract.ts";
+import { extract, extractExcerpt } from "./extract.ts";
 import { FileIssue, limits } from "./model.ts";
 
 try {
@@ -13,11 +13,31 @@ try {
   const separator = input.indexOf(10);
   if (separator < 1 || separator > 1023)
     throw new FileIssue("FILE_INVALID_REQUEST");
-  const filename: unknown = JSON.parse(
+  const request: unknown = JSON.parse(
     input.subarray(0, separator).toString("utf8"),
   );
-  if (typeof filename !== "string") throw new FileIssue("FILE_INVALID_REQUEST");
-  const result = await extract(input.subarray(separator + 1), filename);
+  const bytes = input.subarray(separator + 1);
+  let result;
+  if (typeof request === "string") result = await extract(bytes, request);
+  else {
+    const command = request as {
+      filename?: string;
+      unit?: number;
+      row?: number;
+    } | null;
+    if (
+      typeof command?.filename !== "string" ||
+      !Number.isSafeInteger(command.unit) ||
+      command.unit! < 1 ||
+      !Number.isSafeInteger(command.row) ||
+      command.row! < 1
+    )
+      throw new FileIssue("FILE_INVALID_REQUEST");
+    result = await extractExcerpt(bytes, command.filename, {
+      unit: command.unit!,
+      row: command.row!,
+    });
+  }
   const output = JSON.stringify({ result });
   if (Buffer.byteLength(output) > limits.outputBytes)
     throw new FileIssue("FILE_OUTPUT_LIMIT");

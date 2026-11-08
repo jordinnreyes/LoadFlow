@@ -117,6 +117,8 @@ export function WeeklyCalendar({
   deadlines,
   sessions,
   activityTitle,
+  positionKey,
+  positions,
 }: {
   start: string;
   zone: string | null;
@@ -124,6 +126,8 @@ export function WeeklyCalendar({
   deadlines: Activity[];
   sessions: Session[];
   activityTitle: (id: string) => string;
+  positionKey: string;
+  positions: Map<string, { top: number; left: number }>;
 }) {
   const scroll = useRef<HTMLElement>(null);
   const axis = useRef<HTMLDivElement>(null);
@@ -193,9 +197,12 @@ export function WeeklyCalendar({
       : []),
   ]);
   useLayoutEffect(() => {
-    if (scroll.current && axis.current)
-      scroll.current.scrollTop = axis.current.clientHeight * (7 / 24);
-  }, []);
+    if (!scroll.current || !axis.current) return;
+    const previous = positions.get(positionKey);
+    scroll.current.scrollTop =
+      previous?.top ?? axis.current.clientHeight * (7 / 24);
+    scroll.current.scrollLeft = previous?.left ?? 0;
+  }, [positionKey, positions]);
 
   return (
     <section
@@ -203,6 +210,10 @@ export function WeeklyCalendar({
       className="calendar-scroll connected-calendar-scroll"
       aria-label="Semana del calendario"
       tabIndex={0}
+      onScroll={(event) => {
+        const { scrollTop: top, scrollLeft: left } = event.currentTarget;
+        positions.set(positionKey, { top, left });
+      }}
     >
       <div className="connected-calendar-grid">
         <div className="calendar-days">

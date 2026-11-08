@@ -1,4 +1,29 @@
-import { FileIssue, fileKind, limits, type Extraction } from "./model.ts";
+import {
+  FileIssue,
+  fileKind,
+  limits,
+  excerptLimit,
+  type ExcerptLocation,
+  type Extraction,
+} from "./model.ts";
+
+export async function extractExcerpt(
+  bytes: Buffer,
+  filename: string,
+  location: ExcerptLocation,
+) {
+  if (bytes.length > limits.bytes) throw new FileIssue("FILE_BYTES_LIMIT");
+  const kind = fileKind(filename, bytes);
+  const text =
+    kind === "xlsx"
+      ? await (
+          await import("./xlsx.ts")
+        ).xlsxExcerpt(bytes, location.unit, location.row)
+      : await (await import("./pdf.ts")).pdfExcerpt(bytes, location.unit);
+  const excerpt = text.trim().slice(0, excerptLimit).trimEnd();
+  if (!excerpt) throw new FileIssue("DOCUMENT_NO_TEXT");
+  return excerpt;
+}
 
 export async function extract(
   bytes: Buffer,

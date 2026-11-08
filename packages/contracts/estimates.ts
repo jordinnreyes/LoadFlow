@@ -31,6 +31,14 @@ export const EstimateInput = Type.Object(
   },
   strict,
 );
+export const EstimateSource = Type.Object(
+  { available: Type.Boolean(), message: Type.String() },
+  strict,
+);
+export const EstimateSourcePreview = Type.Object(
+  { excerpt: Type.String({ minLength: 1, maxLength: 2400 }) },
+  strict,
+);
 
 const Status = Type.Union([
   Type.Literal("estimated"),

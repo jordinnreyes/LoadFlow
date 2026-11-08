@@ -12,10 +12,8 @@ import {
   ProviderSuggestion,
   validateSuggestion,
 } from "../../server/modules/estimates/prompt.js";
-import {
-  Estimates,
-  type EstimatePolicy,
-} from "../../server/modules/estimates/service.js";
+import { Estimates } from "../../server/modules/estimates/service.js";
+import { developmentEstimatePolicy } from "../../server/modules/estimates/local.js";
 import { estimateCorpus } from "../../tests/fixtures/estimates/corpus.js";
 import { fixture } from "../../tests/integration/fixture.js";
 
@@ -25,22 +23,7 @@ const caseId = process.argv[3];
 const cases = estimateCorpus.filter(
   (item) => caseId === undefined || item.id === caseId,
 );
-const capMicros = 1000000n;
-const policy: EstimatePolicy = {
-  environment: "development",
-  model: "gpt-6-luna",
-  tariffVersion: "openai-luna-standard-ceiling-2026-11-07",
-  fingerprintKey: randomBytes(32),
-  maxInputTokens: 1050000,
-  maxOutputTokens: 768,
-  maxMinutes: 1440,
-  timeoutMs: 25000,
-  concurrency: 1,
-  inputMicrosPerMillion: 500000n,
-  outputMicrosPerMillion: 1000000n,
-  userBudgetMicros: capMicros,
-  globalBudgetMicros: capMicros,
-};
+const policy = developmentEstimatePolicy(randomBytes(32));
 
 if (command === "--preview") {
   console.log(

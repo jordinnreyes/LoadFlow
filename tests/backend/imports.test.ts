@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { extract } from "../../server/modules/imports/extraction/extract.ts";
+import {
+  extract,
+  extractExcerpt,
+} from "../../server/modules/imports/extraction/extract.ts";
 import { limits } from "../../server/modules/imports/extraction/model.ts";
 import { pdfFixture } from "../fixtures/imports/pdf-fixture.js";
 
@@ -9,6 +12,31 @@ const fixture = (name: string) =>
   readFile(new URL("../fixtures/imports/" + name, import.meta.url));
 const rejects = (bytes: Buffer, name: string, code: string) =>
   assert.rejects(extract(bytes, name), { code });
+
+test("analysis preview reads only the linked PDF page or XLSX row", async () => {
+  const pdf = pdfFixture([
+    ["Tarea 1", "Entregable: informe."],
+    ["Otra actividad"],
+    [],
+  ]);
+  assert.equal(
+    await extractExcerpt(pdf, "preview.pdf", { unit: 1, row: 1 }),
+    "Tarea 1\nEntregable: informe.",
+  );
+  await assert.rejects(
+    extractExcerpt(pdf, "preview.pdf", { unit: 3, row: 1 }),
+    {
+      code: "DOCUMENT_NO_TEXT",
+    },
+  );
+  const row = await extractExcerpt(
+    await fixture("anexo.xlsx"),
+    "preview.xlsx",
+    { unit: 1, row: 4 },
+  );
+  assert.match(row, /PC2.*MAT1200/);
+  assert.doesNotMatch(row, /PC1|PC3/);
+});
 
 test("XLSX reads seven real rows, date systems, merged origins and cached formulas", async () => {
   const data = await extract(await fixture("anexo.xlsx"), "schedule.XLSX");

@@ -10,6 +10,7 @@ import { CalendarWorker } from "./modules/jobs/calendar-worker.js";
 import { PlanningService } from "./modules/planning/service.js";
 import { PlanningWorker } from "./modules/jobs/planning-worker.js";
 import { localImports } from "./modules/imports/local.js";
+import { localEstimates } from "./modules/estimates/local.js";
 const config = runtimeConfig();
 if (!config.databaseUrl)
   throw new Error("Falta DATABASE_URL. Consulta .env.example y README.");
@@ -76,6 +77,7 @@ const app = await buildApp({
   calendar,
   planning,
   imports: imports.service,
+  estimates: localEstimates(academics, process.env.CREDENTIAL_ENCRYPTION_KEY!),
   ready: async () => {
     await db.pool.query("select 1");
   },

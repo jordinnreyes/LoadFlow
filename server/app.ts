@@ -193,10 +193,12 @@ export async function buildApp(
     () => (planning ??= new PlanningService(getIdentity(), getCalendar())),
   );
   await app.register((scope, _options, done) => {
-    importsRoutes(scope, getIdentity, () => options.imports).then(
-      () => done(),
-      done,
-    );
+    importsRoutes(
+      scope,
+      getIdentity,
+      () => options.imports,
+      options.estimates,
+    ).then(() => done(), done);
   });
   app.get("/api/v1/openapi.json", { schema: { hide: true } }, async () =>
     app.swagger(),

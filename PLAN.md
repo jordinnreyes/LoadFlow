@@ -646,3 +646,24 @@ El promotor pidió agrupar la autorización de títulos con lista y ocupación a
 F6 sigue abierta para la nueva subida de un enunciado desde Premium, el recorrido documental conectado de punta a punta, la comprobación real del consentimiento agrupado de Calendar, la recuperación de posición y la matriz visual y funcional de F6-09.
 
 `npm run test:e2e:real` pasó por separado con dos contextos del mismo propietario y otro propietario sintético. Verificó persistencia, aislamiento y rechazo de una revisión obsoleta. El primer intento concurrente agotó el tiempo de conexión a PostgreSQL durante la preparación.
+
+### Continuación para el cierre técnico de F6
+
+El promotor confirmó en su cuenta de prueba web el consentimiento agrupado de Google Calendar y la visualización de títulos reales. La comprobación corresponde a F6-05. AM-01 conserva su evidencia Android independiente.
+
+La revisión de Premium desde una actividad confirmada permite volver a subir el mismo PDF/XLSX. Tras comprobar propietario, derecho, consentimiento y huella, el parser aislado devuelve un fragmento editable de la página o fila vinculada. La subida de análisis no recrea el objeto temporal. Solicitar una estimación es una acción posterior y conserva el control de privacidad, derechos y presupuesto de F5. La cuadrícula de Calendario conserva desplazamiento vertical y horizontal por periodo, semana y zona dentro de la sesión de la aplicación.
+
+Matriz de revisión funcional F01–F18. Las evidencias del navegador conectado, los dobles de proveedor y las pruebas de API se distinguen en cada bloque.
+
+| Flujo | Cobertura |
+|---|---|
+| F01, F02 | OTP real local en integración, bienvenida y restauración/cierre de sesión en navegador, ingreso Google web confirmado por el promotor. |
+| F03, F04 | Google real en web con títulos confirmados. Selección, caducidad, revocación, disponibilidad, excepciones y compromisos cubiertos por integración y Playwright. |
+| F05, F06, F07 | Chromium con API y almacenamiento locales para subida/corrección/confirmación parcial y actividad manual. Revisión de fragmento y estimación Premium con proveedor simulado. |
+| F08, F09, F10, F11 | Prioridades, motor determinista y estados de capacidad cubiertos por API y demo. Semana conectada y retorno del detalle cubiertos en navegador. |
+| F12, F13, F14, F15, F16 | Replanificación, fijadas, deshacer, avance, fechas y grupos cubiertos por integración y demo. Progreso y revisión obsoleta se comprueban también en navegador conectado. |
+| F17, F18 | Dos contextos del mismo propietario, otro propietario aislado y revocación de sesión en Chromium conectado. Límites de Premium y ciclo del documento en pruebas de API. |
+
+`npm run check` pasó con build, tipos, 22 reglas y 37 pruebas de backend. El recorrido Chromium conectado pasó con PostgreSQL, Storage y parser Docker locales y proveedor Premium simulado. Verificó una fila confirmada de siete, relectura desde otro contexto, original eliminado, rechazo de bytes distintos y envío de un solo fragmento editado tras revisión. Comprobó la cuadrícula a 320, 390, 768, 1024 y 1440 px. Las capturas sintéticas de 390 y 1440 px están bajo `.local/f6-final-visual` y se compararon con la referencia de diseño local. Los timeouts de conexión durante las corridas concurrentes se resolvieron con ejecución aislada. La suite demo de 40 ejecuciones consta en el punto de guardado anterior.
+
+Los cuatro pendientes técnicos quedan verificados en el alcance web local indicado. La revisión del checklist F01–F18 por el promotor y el hito M4 siguen sus condiciones del PLAN.

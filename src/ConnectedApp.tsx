@@ -176,6 +176,9 @@ function Workspace({
   const route = useRoute();
   const [page, id] = route.split("?")[0].split("/").slice(1);
   const [offset, setOffset] = useState(0);
+  const calendarPositions = useRef(
+    new Map<string, { top: number; left: number }>(),
+  );
   const [periodId, setPeriodId] = useState("");
   const [guide, setGuide] = useState(
     account.session.user.onboardingState === "new" && page === "tablero",
@@ -331,6 +334,7 @@ function Workspace({
                       first={monday(today)}
                       offset={offset}
                       setOffset={setOffset}
+                      calendarPositions={calendarPositions.current}
                       calendar={page === "calendario"}
                     />
                   ) : (

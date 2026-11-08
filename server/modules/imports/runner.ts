@@ -2,7 +2,12 @@ import { execFile, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FileIssue, limits, type Extraction } from "./extraction/model.js";
+import {
+  FileIssue,
+  limits,
+  type Extraction,
+  type ExcerptLocation,
+} from "./extraction/model.js";
 
 const source = fileURLToPath(new URL("./extraction/", import.meta.url));
 const dependencies = resolve(source, "../../../../node_modules");
@@ -14,8 +19,22 @@ export type Extractor = (
   filename: string,
 ) => Promise<Extraction>;
 
+export type ExcerptExtractor = (
+  bytes: Buffer,
+  filename: string,
+  location: ExcerptLocation,
+) => Promise<string>;
+
 export const isolatedExtract: Extractor = (bytes, filename) =>
-  new Promise((accept, reject) => {
+  isolatedRequest<Extraction>(bytes, filename);
+export const isolatedExcerpt: ExcerptExtractor = (bytes, filename, location) =>
+  isolatedRequest<string>(bytes, { filename, ...location });
+
+function isolatedRequest<T>(
+  bytes: Buffer,
+  request: string | ({ filename: string } & ExcerptLocation),
+) {
+  return new Promise<T>((accept, reject) => {
     const name = "cw-f3-parser-" + randomUUID();
     const child = spawn(
       "docker",
@@ -101,7 +120,7 @@ export const isolatedExtract: Extractor = (bytes, filename) =>
         const value = JSON.parse(
           Buffer.concat(chunks).toString("utf8").trim().split("\n").at(-1)!,
         ) as {
-          result?: Extraction;
+          result?: T;
           error?: string;
         };
         if (value.result) accept(value.result);
@@ -110,6 +129,7 @@ export const isolatedExtract: Extractor = (bytes, filename) =>
         reject(new FileIssue("EXTRACTION_FAILED"));
       }
     });
-    child.stdin.write(JSON.stringify(filename) + "\n");
+    child.stdin.write(JSON.stringify(request) + "\n");
     child.stdin.end(bytes);
   });
+}
