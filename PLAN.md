@@ -283,7 +283,7 @@ Las 22 pruebas de reglas y 36 ejecuciones de interfaz del prototipo son una refe
 | M1 | Identidad/datos/prioridades/progreso con aislamiento | Probado en alcance local/web | Evidencia §15; Google web real confirmado por el promotor. SMTP/políticas de piloto y Android AM-01 pendientes de sus etapas; revisión del promotor pendiente, no Aprobado |
 | M2 | Backend Free: importar, Calendar/manual, planificar/reajustar/registrar | Pendiente | F2–F4 probados y reglas aprobadas |
 | M3 | Premium evaluado y costo/consentimiento/control aprobados | Pendiente | F5 y criterios de habilitación |
-| M4 | Web existente integrada; flujos y visual responsive revisados | Pendiente | F6 y F7, sin afirmar validación nativa |
+| M4 | Web existente integrada; flujos y visual responsive revisados | Pendiente | F6 probada en web local. Quedan F7 y la revisión del hito. Android se valida en AM-01 |
 | M5 | Staging probado, recuperación ensayada, presupuesto revisado | Pendiente | F8-01–06 |
 | G-PROD / M6 | Release específica autorizada y verificada | Pendiente | Nueva autorización explícita, antes de F8-07 |
 | G-ANDROID / A1 | AM-01 probada en APK y revisada; condición necesaria para validar Android para distribución | Pendiente | Evidencia T12 y revisión del promotor; no autoriza distribuir ni sustituye etapa móvil completa |
@@ -643,7 +643,7 @@ El promotor pidió agrupar la autorización de títulos con lista y ocupación a
 
 **Punto de guardado de F6.** Semana muestra 24 horas y posiciona eventos, sesiones y plazos con hora según la zona de estudio. Los eventos de Google usan menor contraste visual que las sesiones y plazos de CargaWise. Pasaron `npm run check` con 22 reglas y 36 pruebas de backend, 22 pruebas de integración local y 40 ejecuciones de Playwright en escritorio y móvil, entre demo y flujo conectado con respuestas controladas. El build `android-spike` recompiló los recursos de demostración con los estilos compartidos. La app Android conectada conserva su validación independiente AM-01.
 
-F6 sigue abierta para la nueva subida de un enunciado desde Premium, el recorrido documental conectado de punta a punta, la comprobación real del consentimiento agrupado de Calendar, la recuperación de posición y la matriz visual y funcional de F6-09.
+En ese punto quedaban pendientes la nueva subida de un enunciado desde Premium, el recorrido documental conectado de punta a punta, la comprobación real del consentimiento agrupado de Calendar, la recuperación de posición y la matriz visual y funcional de F6-09.
 
 `npm run test:e2e:real` pasó por separado con dos contextos del mismo propietario y otro propietario sintético. Verificó persistencia, aislamiento y rechazo de una revisión obsoleta. El primer intento concurrente agotó el tiempo de conexión a PostgreSQL durante la preparación.
 
@@ -666,4 +666,4 @@ Matriz de revisión funcional F01–F18. Las evidencias del navegador conectado,
 
 `npm run check` pasó con build, tipos, 22 reglas y 37 pruebas de backend. El recorrido Chromium conectado pasó con PostgreSQL, Storage y parser Docker locales y proveedor Premium simulado. Verificó una fila confirmada de siete, relectura desde otro contexto, original eliminado, rechazo de bytes distintos y envío de un solo fragmento editado tras revisión. Comprobó la cuadrícula a 320, 390, 768, 1024 y 1440 px. Las capturas sintéticas de 390 y 1440 px están bajo `.local/f6-final-visual` y se compararon con la referencia de diseño local. Los timeouts de conexión durante las corridas concurrentes se resolvieron con ejecución aislada. La suite demo de 40 ejecuciones consta en el punto de guardado anterior.
 
-Los cuatro pendientes técnicos quedan verificados en el alcance web local indicado. La revisión del checklist F01–F18 por el promotor y el hito M4 siguen sus condiciones del PLAN.
+**Cierre de F6 · 07/11/2026.** El promotor aprobó el checklist F01–F18 de la web. F6 queda **Probada y cerrada en el alcance web local** con la evidencia del commit `e69e6af`. La prueba del tema de escritorio pasó con la demo compilada tras los timeouts de carga en el servidor de desarrollo. F7 queda pendiente de inicio y M4 conserva su revisión separada.
