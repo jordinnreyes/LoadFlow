@@ -281,22 +281,28 @@ export function Modal({
   eyebrow,
   children,
   onClose,
+  returnFocusTo,
   wide = false,
 }: {
   title: string;
   eyebrow?: string;
   children: ReactNode;
   onClose: () => void;
+  returnFocusTo?: HTMLElement | null;
   wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   const id = useId();
   useEffect(() => {
-    const returnFocus = document.activeElement as HTMLElement;
+    const returnFocus = returnFocusTo?.isConnected
+      ? returnFocusTo
+      : (document.activeElement as HTMLElement);
     const dialog = ref.current!;
     dialog.showModal();
+    heading.current?.focus();
     const cancel = (e: Event) => {
       e.preventDefault();
       closeRef.current();
@@ -317,7 +323,7 @@ export function Modal({
       <div className="modal-header">
         <div>
           {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-          <h2 id={id} tabIndex={-1} autoFocus>
+          <h2 ref={heading} id={id} tabIndex={-1}>
             {title}
           </h2>
         </div>

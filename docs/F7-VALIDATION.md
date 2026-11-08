@@ -97,3 +97,37 @@ npm run check
 npm run test:integration
 npm run test:e2e:f7
 ```
+
+## F7-06 · Tiempos de referencia para staging
+
+Corrida local del 08/11/2026 en Windows, i5-1335U, 8 GiB y Node 24.22.2. Fastify ejecutó las rutas por `inject`, con PostgreSQL, Storage y Docker locales y un doble de Auth. Las lecturas y propuestas tienen una llamada previa de calentamiento. La medición del worker abarca una iteración de cola, con extracción aislada, persistencia y borrado del temporal. La red del navegador, la espera entre iteraciones y los proveedores externos quedan fuera de la muestra.
+
+| Operación | Muestras | Mediana | Mínimo–máximo |
+|---|---:|---:|---:|
+| Lectura de la semana, con un periodo de 24 actividades | 8 | 1 184 ms | 567–1 496 ms |
+| Propuesta de planificación, 24 actividades, 48 sesiones y horizonte de 60 días | 3 | 3 072 ms | 3 042–3 541 ms |
+| Recepción PDF de 8 páginas y 3 044 bytes | 3 | 685 ms | 313–1 148 ms |
+| Worker PDF | 3 | 6 607 ms | 4 492–14 889 ms |
+| Recepción XLSX de 3 hojas y 6 297 bytes | 3 | 323 ms | 288–416 ms |
+| Worker XLSX | 3 | 7 067 ms | 5 919–12 309 ms |
+
+Para presupuestar la primera prueba de staging, usar como candidato **Render `1c-2g`** (1 vCPU, 2 GB) para web/API y planificación. El límite local de 384 MiB del parser y los heaps de hasta 192 MiB por hilo de planificación reducen el margen de una instancia de 512 MB si coinciden las cargas. Empezar con una extracción a la vez y presupuestar hasta diez conexiones PostgreSQL por proceso con los dos pools actuales. F8 debe verificar latencias y consumo en el entorno objetivo, adaptar las guardas locales de arranque y demostrar cómo ejecutar el parser aislado allí. La muestra serial es una referencia de tiempos para esa prueba. [Planes de cómputo de Render](https://render.com/docs/compute-plans).
+
+```sh
+node --env-file=.env --import tsx scripts/backend/benchmark-f7.ts
+```
+
+## F7-07 · Accesibilidad prioritaria de la web
+
+La revisión se concentra en el Tablero conectado y el diálogo de planificación. Chromium comprobó que «Saltar al contenido» es el primer destino de teclado y lleva el foco al contenido principal en la misma ruta. Al abrir el diálogo se enfoca su título. Tab alcanza el botón de cierre y Escape devuelve el foco al botón que abrió la revisión, aunque la propuesta se haya cargado de forma asíncrona. A 390 px comprobó el acceso a «Añadir» y a Calendario y la ausencia de desbordamiento horizontal del Tablero.
+
+| Par de colores en los tokens de uso principal | Oscuro | Claro |
+|---|---:|---:|
+| Texto principal sobre superficie | 13,21:1 | 15,36:1 |
+| Texto secundario sobre superficie | 9,02:1 | 7,87:1 |
+| Texto del botón primario | 10,32:1 | 8,15:1 |
+| Texto de aviso de error | 7,73:1 | 6,82:1 |
+| Indicador de foco sobre superficie | 10,03:1 | 8,15:1 |
+| Borde de control sobre superficie | 3,47:1 | 3,82:1 |
+
+Los pares seleccionados superan 4,5:1 para texto y 3:1 para indicadores o bordes. El alcance se limita a estos tokens y a los recorridos descritos. [Contraste de texto](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html), [contraste de controles](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html).

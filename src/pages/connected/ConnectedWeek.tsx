@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   academics,
   periodPath,
@@ -107,14 +107,17 @@ export function ConnectedWeek({
   const [review, setReview] = useState(false);
   const [move, setMove] = useState<{ id: string; revision: number }>();
   const [formError, setFormError] = useState("");
+  const proposalOpener = useRef<HTMLElement | null>(null);
   async function propose(command: PlanCommand) {
     if (!read.data?.revision) return;
+    const opener = document.activeElement;
     const result = await write.run<Proposal>({
       path: `${periodPath(period.id)}/planning-proposals`,
       body: command,
       revision: read.data.revision,
     });
     if (result) {
+      proposalOpener.current = opener instanceof HTMLElement ? opener : null;
       setMove(undefined);
       setReview(false);
       setConfirmations([]);
@@ -610,7 +613,8 @@ export function ConnectedWeek({
             {data.plan.pendingProposalId && (
               <Button
                 disabled={write.busy}
-                onClick={async () => {
+                onClick={async (event) => {
+                  const opener = event.currentTarget;
                   try {
                     const { data: next } = await request<Proposal>(
                       endpoint(
@@ -619,6 +623,7 @@ export function ConnectedWeek({
                     );
                     setFormError("");
                     setConfirmations([]);
+                    proposalOpener.current = opener;
                     setProposal(next);
                   } catch (failure) {
                     if (failure instanceof ApiError && failure.status === 401)
@@ -668,7 +673,11 @@ export function ConnectedWeek({
         </Modal>
       )}
       {proposal && (
-        <Modal title="Revisar propuesta" onClose={() => setProposal(undefined)}>
+        <Modal
+          title="Revisar propuesta"
+          onClose={() => setProposal(undefined)}
+          returnFocusTo={proposalOpener.current}
+        >
           <p>
             Antes: {proposal.before.length} sesiones. Después:{" "}
             {proposal.after.sessions.length} sesiones.

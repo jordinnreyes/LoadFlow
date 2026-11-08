@@ -498,6 +498,52 @@ test("F7-01 registers with OTP, imports, plans, replans and persists progress ac
         ).toBeEnabled();
       },
     );
+    await t.test(
+      "F7-07 keyboard reaches content and dismisses a plan review with focus restored",
+      async () => {
+        await a.reload();
+        const skip = a.getByRole("link", { name: "Saltar al contenido" });
+        await expect(skip).toBeAttached();
+        await a.keyboard.press("Tab");
+        await expect(skip).toBeFocused();
+        await a.keyboard.press("Enter");
+        await expect(a.getByRole("main")).toBeFocused();
+        await expect(a).toHaveURL(/#\/tablero$/);
+
+        const review = a.getByRole("button", {
+          name: "Revisar nueva distribución",
+        });
+        await review.focus();
+        await a.keyboard.press("Enter");
+        const dialog = a.getByRole("dialog", { name: "Revisar propuesta" });
+        await expect(dialog).toBeVisible();
+        await expect(
+          dialog.getByRole("heading", { name: "Revisar propuesta" }),
+        ).toBeFocused();
+        await a.keyboard.press("Tab");
+        await expect(
+          dialog.getByRole("button", { name: "Cerrar panel" }),
+        ).toBeFocused();
+        await a.keyboard.press("Escape");
+        await expect(dialog).toBeHidden();
+        await expect(review).toBeFocused();
+
+        await a.setViewportSize({ width: 390, height: 844 });
+        await expect(
+          a
+            .getByRole("navigation", { name: "Navegación móvil" })
+            .getByRole("link", { name: "Calendario" }),
+        ).toBeVisible();
+        await expect(
+          a.getByRole("link", { name: "Añadir", exact: true }),
+        ).toBeVisible();
+        assert.ok(
+          await a.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth + 1,
+          ),
+        );
+      },
+    );
   } finally {
     await browser?.close();
     await vite?.close();

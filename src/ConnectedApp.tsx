@@ -258,6 +258,16 @@ function Workspace({
     ));
   return (
     <>
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById("main-content")?.focus();
+        }}
+      >
+        Saltar al contenido
+      </a>
       <div className="app-shell">
         <aside className="sidebar">
           <a className="brand" href="#/tablero">
@@ -290,6 +300,8 @@ function Workspace({
             </div>
           </header>
           <main
+            id="main-content"
+            tabIndex={-1}
             className="content connected-workspace"
             onChangeCapture={(event) => {
               if (
