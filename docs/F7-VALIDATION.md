@@ -131,3 +131,42 @@ La revisión se concentra en el Tablero conectado y el diálogo de planificació
 | Borde de control sobre superficie | 3,47:1 | 3,82:1 |
 
 Los pares seleccionados superan 4,5:1 para texto y 3:1 para indicadores o bordes. El alcance se limita a estos tokens y a los recorridos descritos. [Contraste de texto](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html), [contraste de controles](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html).
+
+## F7-08 · Informe de salida local
+
+Cierre técnico del 08/11/2026 en la rama `codex/f7-validation`. Los recorridos críticos ejercitados terminaron sin bloqueadores abiertos. El promotor aprobó el checklist web F01–F18 al cierre de F6 y pidió concentrar F7-06 y F7-07 en los tiempos necesarios para dimensionar staging y en la accesibilidad prioritaria. M4 conserva su revisión por separado.
+
+| Tarea | Resultado y referencia en Git |
+|---|---|
+| F7-01 | Probada en web local en `658514b`. OTP por Mailpit, cuenta vacía, importación y corrección, planificación y progreso persistentes en dos contextos. Se corrigió la edición de preparación y divisibilidad en actividades importadas. |
+| F7-02 | Probada en `fb6de76`. Siete PDF autorizados y un XLSX sintético, revisión por campo, deduplicación, fecha oficial y escaneo con alta manual. Los fixtures se reconstruyeron sin datos personales. |
+| F7-03 | Probada en `e1acab5`. Oráculo con 192 casos adicionales, zonas y DST, restricciones y deshacer. Se corrigió la reparación de sesiones divisibles en bordes de ventana y con remanentes. |
+| F7-04 | Probada en `b442ebf`. Se comprobó el aislamiento de propietarios, Storage y sesiones, y se bloquearon redirecciones de proveedores y referencias sensibles en logs. La auditoría de dependencias de ejecución registró cero avisos en esa revisión. |
+| F7-05 | Probada en `7d39581`. Recuperación ante fallos inyectados de Calendar, OpenAI, planificación, PostgreSQL y Auth. Una lease vencida ya no puede publicar cobertura de Calendar. |
+| F7-06 | Medición local acotada en `ca2115f`. Medianas de 1,18 s para leer la semana, 3,07 s para generar una propuesta y 6,61–7,07 s para procesar PDF/XLSX. La primera prueba de staging tiene como referencia 1 vCPU, 2 GB y una extracción a la vez. |
+| F7-07 | Revisión web focalizada en `ca2115f`. Se corrigió el foco del diálogo y su retorno tras la carga asíncrona. Se comprobó teclado, ancho de 390 px y seis pares de contraste en cada tema. |
+| F7-08 | Informe completado con resultados, trazabilidad y condiciones de staging. |
+
+### Cobertura y repetición
+
+La correspondencia de cada RF y RNF con las tareas y pruebas sigue en la [matriz del plan](../PLAN.md#13-trazabilidad-prd--tareas). La tabla recoge la evidencia de salida y distingue servicios reales de simulaciones.
+
+| Prueba | Evidencia |
+|---|---|
+| T01, T06 | `npm run check` pasó con compilación web, tipos de servidor, 22 reglas de dominio y 46 pruebas de backend. El oráculo y los casos de restricciones se detallan en F7-03. |
+| T02, T04 | PostgreSQL y Storage locales, RLS, carreras, idempotencia y corpus con parser Docker. En F7-05 pasaron 25 pruebas de integración entre `npm run test:integration` y la repetición dirigida de Calendar tras ajustar la expectativa de reconfirmación. |
+| T03, T05 | OTP con Supabase local y Mailpit. El promotor comprobó Google web y el consentimiento de Calendar con títulos en F6. F7 usó dobles para revocación, errores y reintentos de Google. |
+| T07 | F7 usó un doble de OpenAI para probar presupuesto, fallos y alternativas manuales. La llamada real, su corpus sintético y el costo estimado se documentaron por separado en [F5](F5-DEVELOPMENT.md#resultado-de-la-evaluación-inicial). |
+| T08 | `npm run check` cubrió validación de solicitudes/respuestas y OpenAPI. Las suites de integración y seguridad comprobaron aislamiento de recursos y conflictos de versión. `npm run contracts:export` y `npm run contracts:types` reprodujeron los archivos versionados sin diferencias. |
+| T09 | `npm run test:e2e:f7` pasó cuatro recorridos conectados con Chromium, incluido el flujo entre dos contextos autenticados, recuperación y foco. Por el cambio del diálogo compartido se repitió `node scripts/browser.mjs test`, el ejecutor de `npm run test:e2e`. Pasaron las 40 ejecuciones de escritorio y móvil emulado. |
+
+La revisión usa Node 24 en Windows, servicios locales y cuentas sintéticas. La configuración de GitHub Actions conserva `pull_request` y limita `push` a `main`.
+
+### Condiciones pendientes
+
+| Ámbito | Qué queda por resolver o verificar |
+|---|---|
+| Staging y gasto | Resolver D-14/15 y revisar cuentas, región, dominio, presupuesto y credenciales independientes. F8-01 prepara la propuesta concreta para revisión antes de crear recursos. |
+| Ejecución desplegada | Adaptar el arranque local, mantener el aislamiento del parser y verificar HTTPS, OAuth, SMTP y secretos del ambiente. Medir CPU, memoria, pool y latencias bajo concurrencia antes de confirmar capacidad. |
+| Operación y privacidad | Ensayar migración, restauración de base de datos y objetos, rollback y alertas. Completar en D-15 la política de retención, borrado de cuenta y copias antes del piloto. La extracción local ya comprueba el borrado del original temporal. |
+| Validaciones separadas | M4 queda pendiente de revisión del promotor. Android conectado se valida con AM-01/T12 en un APK. La revisión prioritaria de F7-07 dejó fuera lectores de pantalla, ampliación de texto y una auditoría de tacto en dispositivo. |
