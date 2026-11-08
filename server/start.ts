@@ -12,7 +12,7 @@ import { PlanningWorker } from "./modules/jobs/planning-worker.js";
 import { localImports } from "./modules/imports/local.js";
 import { localEstimates } from "./modules/estimates/local.js";
 const config = runtimeConfig();
-const staging = config.mode === "staging" ? config : undefined;
+const hosted = config.mode === "local" ? undefined : config;
 if (!config.databaseUrl)
   throw new Error("Falta DATABASE_URL. Consulta .env.example y README.");
 const db = database(config.databaseUrl);
@@ -26,7 +26,7 @@ for (const name of required)
   if (!process.env[name])
     throw new Error(`Falta ${name}; consulta configuración local.`);
 if (
-  !staging &&
+  !hosted &&
   (!loopback(config.databaseUrl) ||
     !loopback(process.env.IDENTITY_DATABASE_URL!) ||
     !loopback(process.env.SUPABASE_URL!))
@@ -35,7 +35,7 @@ if (
     "F0/F1 se ejecuta solo con la infraestructura local autorizada.",
   );
 const identityDb = database(
-  staging?.identityDatabaseUrl ?? process.env.IDENTITY_DATABASE_URL!,
+  hosted?.identityDatabaseUrl ?? process.env.IDENTITY_DATABASE_URL!,
 );
 await assertApplicationRoles(db.pool, identityDb.pool);
 const academics = new Academics(db.pool);
@@ -44,7 +44,8 @@ const identity = new Identity(
   new SupabaseProvider(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_ANON_KEY!,
-    staging?.allowedEmails,
+    hosted?.allowedEmails,
+    config.mode === "production",
   ),
   academics,
   {
@@ -52,12 +53,15 @@ const identity = new Identity(
     googleCallbackOrigin: config.oauthCallbackOrigin,
     encryptionKey: process.env.CREDENTIAL_ENCRYPTION_KEY!,
     googleEnabled: process.env.GOOGLE_AUTH_ENABLED === "true",
-    allowedEmails: staging?.allowedEmails,
+    allowedEmails: hosted?.allowedEmails,
+    limitGoogleStart: config.mode === "production",
   },
 );
 const calendar = new CalendarService(
   identity,
-  process.env.CALENDAR_CLIENT_ID && process.env.CALENDAR_CLIENT_SECRET
+  hosted?.calendarEnabled !== false &&
+    process.env.CALENDAR_CLIENT_ID &&
+    process.env.CALENDAR_CLIENT_SECRET
     ? new GoogleCalendarProvider({
         clientId: process.env.CALENDAR_CLIENT_ID,
         clientSecret: process.env.CALENDAR_CLIENT_SECRET,
@@ -71,9 +75,9 @@ const calendar = new CalendarService(
 const worker = new CalendarWorker(calendar);
 const planning = new PlanningService(identity, calendar);
 const planningWorker = new PlanningWorker(planning);
-if (!staging && !process.env.SUPABASE_SERVICE_ROLE_KEY)
+if (!hosted && !process.env.SUPABASE_SERVICE_ROLE_KEY)
   throw new Error("Falta SUPABASE_SERVICE_ROLE_KEY para importación local.");
-const imports = staging
+const imports = hosted
   ? undefined
   : await localImports(
       identity,
@@ -86,12 +90,14 @@ const app = await buildApp({
   calendar,
   planning,
   imports: imports?.service,
-  estimates: staging
+  estimates: hosted
     ? undefined
     : localEstimates(academics, process.env.CREDENTIAL_ENCRYPTION_KEY!),
-  webRoot: staging ? "dist" : undefined,
+  webRoot: hosted ? "dist" : undefined,
+  publicWeb: hosted?.publicWeb,
   ready: async () => {
     await db.pool.query("select 1");
+    if (hosted) await identityDb.pool.query("select 1");
   },
 });
 let stopWorker: () => Promise<void> = async () => {};

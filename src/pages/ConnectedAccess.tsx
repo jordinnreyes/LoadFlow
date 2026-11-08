@@ -7,6 +7,8 @@ export default function ConnectedAccess({
 }: {
   onSession: () => void;
 }) {
+  const emailEnabled =
+    !document.documentElement.hasAttribute("data-google-only");
   const [intent, setIntent] = useState<"register" | "login">("login");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -70,7 +72,7 @@ export default function ConnectedAccess({
       <section className="access-form">
         <Badge tone="info">Tu cuenta WiseLoad</Badge>
         <div className="access-form-inner">
-          {!challenge && (
+          {emailEnabled && !challenge && (
             <div className="segmented" role="group" aria-label="Tipo de acceso">
               <button
                 type="button"
@@ -99,11 +101,13 @@ export default function ConnectedAccess({
             </div>
           )}
           <h2>
-            {challenge
-              ? "Verifica tu correo"
-              : intent === "login"
-                ? "Ingresa con tu correo"
-                : "Crea tu cuenta con correo"}
+            {!emailEnabled
+              ? "Ingresa con tu cuenta de Google"
+              : challenge
+                ? "Verifica tu correo"
+                : intent === "login"
+                  ? "Ingresa con tu correo"
+                  : "Crea tu cuenta con correo"}
           </h2>
           {challenge && <p role="status">{challenge.message}</p>}
           {!challenge && (
@@ -118,60 +122,73 @@ export default function ConnectedAccess({
                 <Notice
                   tone="warning"
                   title={
-                    google === "unavailable"
-                      ? "Google no está configurado en este entorno"
-                      : "No se completó el acceso con Google"
+                    google === "busy"
+                      ? "Hay muchos intentos de acceso. Vuelve a intentarlo en unos minutos."
+                      : google === "unavailable"
+                        ? "Google no está configurado en este entorno"
+                        : "No se completó el acceso con Google"
                   }
                 >
-                  Puedes continuar con correo.
+                  {emailEnabled
+                    ? "Puedes continuar con correo."
+                    : "Vuelve a intentar el acceso."}
                 </Notice>
               )}
-              <div className="divider-text">o continúa con correo</div>
+              {emailEnabled && (
+                <div className="divider-text">o continúa con correo</div>
+              )}
             </>
           )}
-          <form onSubmit={submit} aria-busy={busy}>
-            {challenge ? (
-              <Field label="Código de verificación">
-                <input
-                  type="text"
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                  required
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                />
-              </Field>
-            ) : (
-              <Field label="Correo electrónico">
-                <input
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </Field>
-            )}
-            {error && (
-              <div role="alert">
-                <Notice tone="danger" title={error} />
-              </div>
-            )}
-            <Button
-              type="submit"
-              variant="primary"
-              className="full"
-              disabled={busy}
-            >
-              {busy
-                ? "Un momento…"
-                : challenge
-                  ? "Verificar código"
-                  : "Enviar código"}
-            </Button>
-          </form>
+          {emailEnabled && (
+            <form onSubmit={submit} aria-busy={busy}>
+              {challenge ? (
+                <Field label="Código de verificación">
+                  <input
+                    type="text"
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    required
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                  />
+                </Field>
+              ) : (
+                <Field label="Correo electrónico">
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
+                </Field>
+              )}
+              {error && (
+                <div role="alert">
+                  <Notice tone="danger" title={error} />
+                </div>
+              )}
+              <Button
+                type="submit"
+                variant="primary"
+                className="full"
+                disabled={busy}
+              >
+                {busy
+                  ? "Un momento…"
+                  : challenge
+                    ? "Verificar código"
+                    : "Enviar código"}
+              </Button>
+            </form>
+          )}
+          {!emailEnabled && (
+            <p>
+              <a href="/privacidad">Política de privacidad</a>
+            </p>
+          )}
           {challenge && (
             <div className="form-actions">
               <Button variant="ghost" onClick={requestCode} disabled={busy}>

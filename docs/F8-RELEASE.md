@@ -1,0 +1,41 @@
+# F8 · Candidato de liberación web de WiseLoad
+
+El promotor eligió registro con cualquier cuenta de Google y conservar una URL de Render. Producción tendrá su propio servicio, proyecto Supabase y proyecto OAuth. El nombre tentativo del servicio es `wiseload`. Registrar la URL que asigne Render antes de crear callbacks o iniciar la verificación de Google. La apertura al público se decide sobre un commit concreto en G-PROD.
+
+## Qué se publica
+
+- Primera web pública con acceso Google, cuentas que comienzan vacías, gestión académica, planificación y disponibilidad manual. Los endpoints y el formulario OTP quedan deshabilitados en el modo de producción de esta release.
+- Calendar tiene un cliente OAuth distinto. Permanece cerrado al público hasta verificar los scopes con Google. Se puede probar en staging y preparar el expediente con la producción cerrada a cuentas de revisión.
+- La carga de documentos, Premium y el APK conectado conservan sus comprobaciones separadas. El ensayo de restauración de esta release se concentra en PostgreSQL y en datos académicos. Las copias de objetos se comprobarán antes de habilitar carga.
+
+## Configuración en orden
+
+1. Crear un segundo proyecto **Supabase Free** en North Virginia. Mantener Data API y exposición automática de tablas desactivadas. Generar credenciales nuevas, descargar la CA y usar el **Session pooler** en 5432 con `sslmode=verify-full`. En una configuración de administración local separada, fijar `WISELOAD_ENV=production`, `SUPABASE_URL`, `STAGING_SUPABASE_PROJECT_REF` y `PRODUCTION_SUPABASE_PROJECT_REF`. Las referencias deben ser distintas. Repetir [el bootstrap y la migración](F8-STAGING.md#puesta-en-marcha-del-ensayo-gratuito) contra este proyecto nuevo. Mantener la credencial de migración fuera de Render. [Cupos de Supabase Free](https://supabase.com/pricing).
+2. Preparar otro **Render Web Service** en Virginia con plan **Free**, runtime Docker, mismo `infra/staging/Dockerfile`, auto-deploy apagado y readiness `/api/v1/health/ready`. Seleccionar el SHA del candidato. Fijar los secretos de base y cifrado de producción y cargar la CA. Usar la URL asignada como `PUBLIC_APP_ORIGIN`. El primer arranque es una revisión cerrada, con `PRODUCTION_ALLOWED_EMAILS` para las cuentas de prueba y `PUBLIC_REGISTRATION_ENABLED=false`. Mantener `PRODUCTION_CALENDAR_ENABLED=false`. Fijar `PUBLIC_PRIVACY_CONTACT` con el buzón que atenderá solicitudes. [Render Free y sus límites](https://render.com/docs/free).
+3. En el proyecto de **Google Cloud de producción**, crear un cliente web de identidad. Usar el origen de producción en JavaScript origins y el callback `https://<ref-prod>.supabase.co/auth/v1/callback` en Google. Poner el ID y secreto en el proveedor Google de Supabase. En URL Configuration, Site URL es el origen de Render y el redirect permitido es `<origen>/api/v1/auth/google/callback`. Poner `GOOGLE_AUTH_ENABLED=true` en Render y habilitar el proveedor de identidad. [Separación OAuth y políticas](https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance).
+4. Verificar que dos cuentas de revisión distintas aterrizan en un Tablero vacío, que una actividad creada por la primera persiste después de volver a entrar y que la segunda no puede verla. Confirmar logout, protección 401, bloqueo de OTP y disponibilidad de `/privacidad`. Probar retorno tras cancelar Google y revisar las alertas básicas del hosting. Registrar hora, SHA y resultados, sin incluir correos ni datos académicos reales.
+5. Resolver D-15 y revisar el expediente G-PROD. Después de la autorización, aplicar `PUBLIC_REGISTRATION_ENABLED=true` al mismo SHA y comprobar el ingreso con otra cuenta que no figure en la lista. Si falla, regresar la variable a `false` y usar la lista de revisión. Si falla el artefacto, volver a un deploy anterior compatible del mismo servicio o suspender la apertura. Conservar la base y ejecutar una corrección aprobada si cambia el esquema.
+
+## Google Calendar público
+
+El promotor confirmó que Calendar funcionó en staging. Una consulta de solo lectura confirmó la existencia de conexión y de snapshot de ocupación. El sitio de producción puede servir `/privacidad` y una etiqueta de Search Console con `GOOGLE_SITE_VERIFICATION`. En Search Console, probar **URL prefix** con la URL exacta de Render y el método **HTML tag**. Después, comprobar que Google Auth Platform acepta ese host como dominio autorizado del proyecto de producción. Search Console y la aceptación del dominio para OAuth son comprobaciones distintas. [Verificar propiedad](https://support.google.com/webmasters/answer/9008080), [dominios autorizados](https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance#only-use-domains-you-own).
+
+| Permiso de solo lectura | Uso en WiseLoad |
+|---|---|
+| `calendar.calendarlist.readonly` | Mostrar los calendarios disponibles y permitir que la persona elija cuáles usar. |
+| `calendar.events.freebusy` | Consultar los tramos ocupados que el plan debe respetar. |
+| `calendar.events.readonly` | Obtener los títulos cuando la persona activa su visualización. |
+
+En Google Cloud, usar otro cliente web para Calendar con callback `<origen>/api/v1/calendar/callback`. En el expediente incluir el inicio y la política de privacidad del mismo origen, el contacto, la justificación anterior y el enlace al video en inglés y no listado. El video usa una cuenta y un calendario sintéticos y muestra el consentimiento, selección, sincronización, bloques, títulos y desconexión. Google solicita que se vea el ID del cliente OAuth del proyecto que se envía. Confirmar con Google el método para grabar ese flujo de revisión con el cliente de producción antes de solicitar permisos sensibles en la web abierta. Con la revisión aprobada, cargar el ID y secreto del cliente en Render y aplicar `PRODUCTION_CALENDAR_ENABLED=true`. [Guía de verificación de scopes sensibles](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification).
+
+## Datos y recuperación
+
+- La página de privacidad describe cuenta, datos académicos, ocupación, títulos, cifrado de credenciales y canal de solicitudes. El promotor indicó el buzón público de soporte para `PUBLIC_PRIVACY_CONTACT` y eligió atender solicitudes de borrado en un máximo de 15 días, con copias cifradas que caducan a los siete días. D-15 conserva como condición ejecutar y comprobar la eliminación completa de una cuenta de prueba y su acceso, incluyendo desconexión de Google y tratamiento de copias. La política pública se revisa contra ese procedimiento antes de exponerla.
+- Usar copias cifradas de DB con acceso de operador y guardar las claves por separado. Excluir sesiones y credenciales de OAuth del procedimiento de recuperación de usuarios y exigir nuevo inicio de sesión cuando corresponda. Aplicar la caducidad aprobada y mantener el registro de solicitudes fuera de las copias restauradas. [Backups de Supabase](https://supabase.com/docs/guides/platform/backups).
+- La entrada pública de OAuth limpia transacciones vencidas y limita a 250 los inicios conservados por la ventana de diez minutos. Un ensayo aislado con PostgreSQL comprobó la limpieza y el rechazo HTTP 429 al llegar al límite. Falta confirmar alertas y observar el comportamiento al arrancar el servicio de revisión.
+
+### Evidencia y límites
+
+El ensayo de recuperación aplicó las 16 migraciones a una base temporal con una identidad y una actividad ficticias. `pg_dump -Fc` y `pg_restore --exit-on-error` recuperaron el registro de migraciones y la actividad en otra base. Al conectar como `cw_runtime`, el propietario vio una actividad y un segundo contexto vio cero. Se retiraron ambas bases temporales. Este ensayo usa el identificador de Auth como fixture y cubre el esquema académico, su registro de migraciones y RLS.
+
+Para la primera liberación quedan pendientes la comprobación de Auth con dos cuentas en el servicio de revisión, la prueba de borrado con la política aprobada y la confirmación de alertas. La verificación externa de Calendar condiciona su propio interruptor. Mantener el expediente sin autorización hasta que el promotor revise el SHA y los resultados.

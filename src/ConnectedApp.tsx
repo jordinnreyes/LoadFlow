@@ -76,7 +76,8 @@ export default function ConnectedApp() {
       } catch (error) {
         if (abort.signal.aborted) return;
         if (error instanceof ApiError && error.status === 401) {
-          window.history.replaceState(null, "", "#/acceso");
+          if (!/^#\/acceso(?:\?|$)/.test(window.location.hash))
+            window.history.replaceState(null, "", "#/acceso");
           setConnection({ state: "signed-out" });
         } else {
           setConnection({ state: "error", message: apiMessage(error) });
@@ -133,7 +134,7 @@ export default function ConnectedApp() {
     );
   return (
     <main className="content connected-account">
-      <SectionHeading eyebrow="CONEXIÓN LOCAL" title="Tu espacio académico" />
+      <SectionHeading title="Tu espacio académico" />
       {connection.state === "loading" && (
         <p role="status">Comprobando tu sesión…</p>
       )}

@@ -27,6 +27,10 @@ import { planningRoutes } from "./modules/planning/routes.js";
 import { documentProtocol } from "./openapi.js";
 import { estimateRoutes } from "./modules/estimates/routes.js";
 import type { Estimates } from "./modules/estimates/service.js";
+import { privacyPage } from "./privacy.js";
+
+const webCsp =
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 
 export async function buildApp(
   options: {
@@ -38,6 +42,7 @@ export async function buildApp(
     planning?: PlanningService;
     estimates?: Estimates;
     webRoot?: string;
+    publicWeb?: { privacyContact: string; googleSiteVerification?: string };
   } = {},
 ) {
   assertRuntime();
@@ -216,7 +221,7 @@ export async function buildApp(
       );
     return options.identity;
   };
-  await identityRoutes(app, getIdentity);
+  await identityRoutes(app, getIdentity, !options.publicWeb);
   await academicsRoutes(app, getIdentity, Boolean(options.estimates));
   await estimateRoutes(app, getIdentity, options.estimates);
   const getCalendar = () =>
@@ -241,7 +246,25 @@ export async function buildApp(
     app.swagger(),
   );
   if (options.webRoot) {
-    const index = await readFile(resolve(options.webRoot, "index.html"));
+    let index = await readFile(resolve(options.webRoot, "index.html"), "utf8");
+    if (options.publicWeb) {
+      index = index.replace("<html ", "<html data-google-only ");
+      if (options.publicWeb.googleSiteVerification)
+        index = index.replace(
+          "<head>",
+          `<head>\n    <meta name="google-site-verification" content="${options.publicWeb.googleSiteVerification}">`,
+        );
+      const policy = privacyPage(options.publicWeb.privacyContact);
+      app.get(
+        "/privacidad",
+        { schema: { hide: true } },
+        async (_request, reply) =>
+          reply
+            .header("Content-Security-Policy", webCsp)
+            .type("text/html; charset=utf-8")
+            .send(policy),
+      );
+    }
     await app.register(staticFiles, {
       root: resolve(options.webRoot, "assets"),
       prefix: "/assets/",
@@ -251,14 +274,13 @@ export async function buildApp(
       decorateReply: false,
       schemaHide: true,
     });
-    app.get("/", { schema: { hide: true } }, async (_request, reply) =>
-      reply
-        .header("X-Robots-Tag", "noindex, nofollow")
-        .header("Content-Security-Policy",
-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+    app.get("/", { schema: { hide: true } }, async (_request, reply) => {
+      if (!options.publicWeb) reply.header("X-Robots-Tag", "noindex, nofollow");
+      return reply
+        .header("Content-Security-Policy", webCsp)
         .type("text/html; charset=utf-8")
-        .send(index),
-    );
+        .send(index);
+    });
   }
   return app;
 }

@@ -6,6 +6,8 @@ import type { AuthProvider, IdentityProof } from "./provider.js";
 import { Secrets, opaque, hash } from "./crypto.js";
 export const SESSION_COOKIE = "__Host-cw_session";
 export const OAUTH_COOKIE = "__Host-cw_oauth";
+const googleBusy = () =>
+  new DomainError(429, "GOOGLE_SIGN_IN_BUSY", "Hay muchos intentos de acceso. Intenta de nuevo en unos minutos.");
 const denied = () =>
   new DomainError(
     401,
@@ -38,6 +40,7 @@ export class Identity {
       encryptionKey: string;
       googleEnabled: boolean;
       allowedEmails?: ReadonlySet<string>;
+      limitGoogleStart?: boolean;
     },
     readonly now: () => Date = () => new Date(),
   ) {
@@ -285,15 +288,41 @@ export class Identity {
       prompt,
     );
     const state = opaque();
-    await this.pool.query(
-      "insert into app.oauth_transactions(id,state_hash,verifier_ciphertext,expires_at) values($1,$2,$3,$4)",
-      [
-        randomUUID(),
-        hash(state),
-        this.secrets.encrypt(storage),
-        new Date(this.now().getTime() + 600000),
-      ],
-    );
+    const now = this.now();
+    const values = [
+      randomUUID(),
+      hash(state),
+      this.secrets.encrypt(storage),
+      new Date(now.getTime() + 600000),
+    ];
+    if (this.config.limitGoogleStart) {
+      const client = await this.pool.connect();
+      try {
+        await client.query("begin");
+        const lock = await client.query<{ acquired: boolean }>(
+          "select pg_try_advisory_xact_lock(204819,3) as acquired",
+        );
+        if (!lock.rows[0]?.acquired) throw googleBusy();
+        await client.query("delete from app.oauth_transactions where expires_at<=$1", [now]);
+        const result = await client.query(
+          `insert into app.oauth_transactions(id,state_hash,verifier_ciphertext,expires_at)
+           select $1,$2,$3,$4 where (select count(*) from app.oauth_transactions)<250`,
+          values,
+        );
+        if (result.rowCount !== 1) throw googleBusy();
+        await client.query("commit");
+      } catch (error) {
+        await client.query("rollback");
+        throw error;
+      } finally {
+        client.release();
+      }
+    } else {
+      await this.pool.query(
+        "insert into app.oauth_transactions(id,state_hash,verifier_ciphertext,expires_at) values($1,$2,$3,$4)",
+        values,
+      );
+    }
     return { url, state };
   }
   async googleCallback(state: string | undefined, code: string | undefined) {

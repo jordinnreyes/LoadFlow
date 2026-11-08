@@ -4,23 +4,24 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import {
   assertRuntime,
   loopback,
-  stagingDatabaseUrl,
-  stagingProject,
+  managedDatabaseUrl,
+  managedProject,
 } from "../../server/config.js";
 assertRuntime();
 const url = process.env.MIGRATION_DATABASE_URL;
 if (!url) throw new Error("Falta MIGRATION_DATABASE_URL.");
 if (url === process.env.DATABASE_URL)
   throw new Error("Migración y runtime requieren credenciales distintas.");
-const staging = process.env.WISELOAD_ENV === "staging";
-if (!staging && !loopback(url))
+const mode = process.env.WISELOAD_ENV;
+const hosted = mode === "staging" || mode === "production";
+if (!hosted && !loopback(url))
   throw new Error(
-    "Selecciona staging explícitamente para migrar en Supabase gestionado.",
+    "Selecciona el entorno explícitamente para migrar en Supabase gestionado.",
   );
-const connectionString = staging
-  ? stagingDatabaseUrl(
+const connectionString = hosted
+  ? managedDatabaseUrl(
       url,
-      stagingProject(process.env.SUPABASE_URL),
+      managedProject(process.env, mode),
       "postgres",
     )
   : url;

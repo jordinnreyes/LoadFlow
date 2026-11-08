@@ -43,6 +43,7 @@ export class SupabaseProvider implements AuthProvider {
     private url: string,
     private anonKey: string,
     private allowedEmails?: ReadonlySet<string>,
+    private verifiedEmailRequired = false,
   ) {}
   private client(storage?: Record<string, string>) {
     const local = storage ?? {};
@@ -131,8 +132,9 @@ export class SupabaseProvider implements AuthProvider {
       const { data, error } = await this.client().auth.getUser(accessToken);
       if (error) throw (error.status ?? 500) >= 500 ? unavailable() : denied();
       if (!data.user) throw denied();
-      if (this.allowedEmails && (!data.user.email_confirmed_at ||
-          !this.allowedEmails.has(data.user.email?.trim().toLowerCase() ?? "")))
+      const email = data.user.email?.trim().toLowerCase();
+      if (((this.verifiedEmailRequired || this.allowedEmails) && (!email || !data.user.email_confirmed_at)) ||
+          (this.allowedEmails && !this.allowedEmails.has(email ?? "")))
         throw denied();
       return data.user.id;
     } catch (error) {

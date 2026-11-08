@@ -1827,6 +1827,26 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
             503: {
                 headers: {
                     [name: string]: unknown;

@@ -47,7 +47,12 @@ function issue(
 export async function identityRoutes(
   app: FastifyInstance,
   getIdentity: () => Identity,
+  emailEnabled = true,
 ) {
+  function requireEmail() {
+    if (!emailEnabled)
+      throw new DomainError(503, "EMAIL_SIGN_IN_DISABLED", "En esta versión, inicia sesión con Google.");
+  }
   app.post<{ Body: { email: string; intent: "register" | "login" } }>(
     "/api/v1/auth/email/challenges",
     {
@@ -68,6 +73,7 @@ export async function identityRoutes(
       },
     },
     async (request, reply) => {
+      requireEmail();
       const identity = getIdentity();
       identity.origin(request.headers.origin);
       return reply
@@ -87,6 +93,7 @@ export async function identityRoutes(
       },
     },
     async (request, reply) => {
+      requireEmail();
       const identity = getIdentity();
       identity.origin(request.headers.origin);
       return issue(
@@ -174,7 +181,7 @@ export async function identityRoutes(
           { prompt: Type.Optional(Type.Literal("consent")) },
           strict,
         ),
-        response: { 503: ErrorResponse },
+        response: { 429: ErrorResponse, 503: ErrorResponse },
       },
     },
     async (request, reply) => {
@@ -186,8 +193,10 @@ export async function identityRoutes(
         });
         return reply.redirect(result.url);
       } catch (error) {
-        if (browserNavigation(request) && error instanceof DomainError)
-          return reply.redirect(new URL("/#/acceso?google=unavailable", getIdentity().config.origin).toString(), 303);
+        if (browserNavigation(request) && error instanceof DomainError) {
+          const reason = error.code === "GOOGLE_SIGN_IN_BUSY" ? "busy" : "unavailable";
+          return reply.redirect(new URL(`/#/acceso?google=${reason}`, getIdentity().config.origin).toString(), 303);
+        }
         throw error;
       }
     },

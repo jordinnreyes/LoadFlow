@@ -1,15 +1,16 @@
 import pg from "pg";
 import {
   assertRuntime,
-  stagingDatabaseUrl,
-  stagingProject,
+  managedDatabaseUrl,
+  managedProject,
 } from "../../server/config.js";
 
 assertRuntime();
-if (process.env.WISELOAD_ENV !== "staging")
-  throw new Error("Selecciona staging explícitamente para crear sus roles.");
-const project = stagingProject(process.env.SUPABASE_URL);
-const connectionString = stagingDatabaseUrl(
+const mode = process.env.WISELOAD_ENV;
+if (mode !== "staging" && mode !== "production")
+  throw new Error("Selecciona el entorno explícitamente para crear sus roles.");
+const project = managedProject(process.env, mode);
+const connectionString = managedDatabaseUrl(
   process.env.MIGRATION_DATABASE_URL,
   project,
   "postgres",
@@ -19,7 +20,7 @@ const roles = [
   ["cw_identity", process.env.IDENTITY_DATABASE_URL],
 ] as const;
 const passwords = roles.map(([role, url]) => {
-  const password = new URL(stagingDatabaseUrl(url, project, role)).password;
+  const password = new URL(managedDatabaseUrl(url, project, role)).password;
   if (!/^[a-f0-9]{48}$/.test(password))
     throw new Error(`Genera 24 bytes aleatorios en hexadecimal para ${role}.`);
   return password;
@@ -52,7 +53,7 @@ try {
   }
   await admin.query("commit");
   console.log(
-    "Roles restringidos de staging creados. Continúa con la migración.",
+    "Roles restringidos creados. Continúa con la migración.",
   );
 } catch (error) {
   const code =
@@ -61,7 +62,7 @@ try {
       ? "AUTH_FK_PRIVILEGE_MISSING"
       : "UNKNOWN");
   console.error(
-    `Bootstrap de staging fallido. Código ${code}. No se muestran credenciales.`,
+    `Bootstrap fallido. Código ${code}. No se muestran credenciales.`,
   );
   process.exitCode = 1;
 } finally {
