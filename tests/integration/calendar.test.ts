@@ -6,6 +6,7 @@ import { fixture } from "./fixture.js";
 import { CalendarWorker } from "../../server/modules/jobs/calendar-worker.js";
 import {
   CalendarFailure,
+  EVENT_TITLES_SCOPE,
   SCOPES,
   type CalendarProvider,
   type Token,
@@ -17,6 +18,17 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
     revoked = 0;
   let partialSource = false,
     unauthorizedOnce = false;
+  const visibleWeek = {
+    from: "2029-12-31T05:00:00.000Z",
+    to: "2030-01-07T05:00:00.000Z",
+  };
+  const weekBlocks = [
+    { startAt: "2029-12-31T14:00:00.000Z", endAt: "2029-12-31T15:00:00.000Z" },
+    { startAt: "2030-01-06T14:00:00.000Z", endAt: "2030-01-06T15:00:00.000Z" },
+  ];
+  const weeklyQueries: { from: string; to: string }[] = [];
+  const initialSyncQueries: { from: string; to: string }[] = [];
+  const titleQueries: string[] = [];
   let hold: Promise<void> | undefined, entered: (() => void) | undefined;
   const token = (): Token => ({
     accessToken: "fixture-access-private",
@@ -26,7 +38,14 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
   });
   const provider: CalendarProvider = {
     authorization: (state) => `https://fixture.test/consent?state=${state}`,
-    exchange: async () => token(),
+    exchange: async (code) =>
+      code === "fixture-code"
+        ? token()
+        : {
+            ...token(),
+            scopes: [...SCOPES, EVENT_TITLES_SCOPE],
+            accessToken: code,
+          },
     refresh: async () => {
       refreshes++;
       return token();
@@ -34,9 +53,10 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
     revoke: async () => {
       revoked++;
     },
-    calendars: async () => [
+    calendars: async (credential) => [
       {
-        providerId: "one",
+        providerId:
+          credential.accessToken === "wrong-google-account" ? "wrong" : "one",
         name: "Clases ficticias",
         timezone: "America/Lima",
         primary: true,
@@ -47,9 +67,36 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
         timezone: "America/Lima",
         primary: false,
       },
+      {
+        providerId: "unused",
+        name: "Sin seleccionar",
+        timezone: "America/Lima",
+        primary: false,
+      },
     ],
+    events: async (credential, source) => {
+      assert.ok(credential.scopes.includes(EVENT_TITLES_SCOPE));
+      titleQueries.push(source.providerId);
+      return {
+        items:
+          source.providerId === "one"
+            ? [
+                {
+                  ...weekBlocks[0],
+                  title: "Clase ficticia",
+                  allDay: false,
+                  blocksTime: true,
+                },
+              ]
+            : [],
+        partial: false,
+      };
+    },
     busy: async (_t, ids, from, to) => {
       assert.ok(Date.parse(to) - Date.parse(from) <= 32 * 86400000);
+      const weekly = from === visibleWeek.from && to === visibleWeek.to;
+      if (weekly) weeklyQueries.push({ from, to });
+      else if (from === visibleWeek.from) initialSyncQueries.push({ from, to });
       if (failure) throw failure;
       if (unauthorizedOnce) {
         unauthorizedOnce = false;
@@ -65,14 +112,16 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
           ? { error: "CALENDAR_SOURCE_UNAVAILABLE" }
           : {}),
         busy:
-          id === "one"
-            ? [
-                {
-                  startAt: "2030-01-07T14:00:00Z",
-                  endAt: "2030-01-07T15:00:00Z",
-                },
-              ]
-            : [],
+          id === "one" && weekly
+            ? weekBlocks
+            : id === "one"
+              ? [
+                  {
+                    startAt: "2030-01-07T14:00:00Z",
+                    endAt: "2030-01-07T15:00:00Z",
+                  },
+                ]
+              : [],
       }));
     },
   };
@@ -128,17 +177,24 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
     );
     const initial = (await r(a, "GET", "/api/v1/calendar/connection")).json();
     assert.equal(initial.state, "not_connected");
-    async function authorize(cancel = false) {
-      const start = await r(a, "POST", "/api/v1/calendar/authorization");
-      assert.equal(start.statusCode, 200, start.body);
-      const state = new URL(start.json().authorizationUrl).searchParams.get(
-        "state",
+    async function authorize(
+      cancel = false,
+      titles = false,
+      code = "fixture-code",
+    ) {
+      const start = await r(
+        a,
+        "POST",
+        `/api/v1/calendar/authorization${titles ? "?eventTitles=true" : ""}`,
       );
+      assert.equal(start.statusCode, 200, start.body);
+      const consent = new URL(start.json().authorizationUrl).searchParams;
+      const state = consent.get("state");
       const set = start.headers["set-cookie"];
       const browser = (Array.isArray(set) ? set[0] : set)!.split(";")[0];
       return f.app.inject({
         method: "GET",
-        url: `/api/v1/calendar/callback?state=${state}&${cancel ? "error=access_denied" : "code=fixture-code"}`,
+        url: `/api/v1/calendar/callback?state=${state}&${cancel ? "error=access_denied" : `code=${code}`}`,
         headers: { cookie: `${a.cookie}; ${browser}` },
       });
     }
@@ -148,6 +204,7 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
     const connected = await authorize();
     assert.equal(connected.statusCode, 200, connected.body);
     assert.equal(connected.json().state, "partial");
+    assert.equal(connected.json().eventTitlesAuthorized, false);
     const refresh = () =>
       r(a, "POST", "/api/v1/calendar/refresh", {
         periodId: period,
@@ -161,25 +218,86 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
     assert.equal(firstJob.id, first.json().job.id);
     await worker.process(firstJob);
     const sources = (await r(a, "GET", "/api/v1/calendar/calendars")).json();
-    assert.equal(sources.items.length, 2);
+    assert.equal(sources.items.length, 3);
     assert.equal(JSON.stringify(sources).includes("fixture-access"), false);
     const select = await r(
       a,
       "PUT",
       "/api/v1/calendar/selection",
-      { calendarIds: sources.items.map((x: { id: string }) => x.id) },
+      {
+        calendarIds: sources.items
+          .filter((x: { name: string }) => x.name !== "Sin seleccionar")
+          .map((x: { id: string }) => x.id),
+      },
       '"calendar-1"',
     );
     assert.equal(select.statusCode, 200, select.body);
-    now.setTime(now.getTime() + 61000);
-    const next = await refresh();
+    const next = await r(a, "POST", "/api/v1/calendar/refresh", {
+      periodId: period,
+      reason: "manual",
+      includeCurrentWeek: true,
+    });
     assert.equal(next.statusCode, 202, next.body);
+    assert.equal(Date.parse(next.json().job.runAfter) - now.getTime(), 3000);
+    assert.equal(await worker.claim(), undefined);
+    now.setTime(now.getTime() + 3000);
     const j = await worker.claim();
     await worker.process(j);
     assert.equal(
       (await r(a, "GET", next.json().statusUrl)).json().status,
       "succeeded",
     );
+    assert.deepEqual(initialSyncQueries, [
+      {
+        from: visibleWeek.from,
+        to: "2030-01-31T05:00:00.000Z",
+      },
+    ]);
+    const firstWeekUrl = `/api/v1/calendar/busy?from=${visibleWeek.from}&to=${visibleWeek.to}`;
+    const firstWeek = await r(a, "GET", firstWeekUrl);
+    assert.equal(firstWeek.json().coverage, "complete");
+    const titlesUrl = `/api/v1/calendar/events?from=${visibleWeek.from}&to=${visibleWeek.to}`;
+    assert.deepEqual((await r(a, "GET", titlesUrl)).json(), {
+      items: [],
+      partial: false,
+    });
+    assert.equal((await authorize(true, true)).statusCode, 400);
+    assert.equal((await authorize(false, true)).statusCode, 403);
+    assert.equal(
+      (await authorize(false, true, "wrong-google-account")).statusCode,
+      422,
+    );
+    const enabled = await authorize(false, true, "fixture-title-grant");
+    assert.equal(enabled.statusCode, 200, enabled.body);
+    assert.equal(enabled.json().eventTitlesEnabled, true);
+    assert.equal(enabled.json().selectedCount, 2);
+    assert.equal(enabled.json().revision, 2);
+    const events = await r(a, "GET", titlesUrl);
+    assert.equal(events.headers["cache-control"], "no-store");
+    assert.equal(events.json().items[0].title, "Clase ficticia");
+    assert.deepEqual(titleQueries.sort(), ["one", "two"]);
+    assert.deepEqual((await r(b, "GET", titlesUrl)).json(), {
+      items: [],
+      partial: false,
+    });
+    const setTitles = (visible: boolean) =>
+      r(a, "PUT", "/api/v1/calendar/event-titles", { visible });
+    const hidden = await setTitles(false);
+    assert.equal(hidden.statusCode, 200, hidden.body);
+    assert.equal(hidden.json().eventTitlesEnabled, false);
+    assert.equal(hidden.json().eventTitlesAuthorized, true);
+    assert.deepEqual((await r(a, "GET", titlesUrl)).json(), {
+      items: [],
+      partial: false,
+    });
+    assert.equal(titleQueries.length, 2);
+    assert.equal((await setTitles(true)).json().eventTitlesEnabled, true);
+    assert.equal(
+      (await r(a, "GET", titlesUrl)).json().items[0].title,
+      "Clase ficticia",
+    );
+    assert.equal((await setTitles(false)).json().eventTitlesEnabled, false);
+    assert.equal((await r(a, "GET", firstWeekUrl)).json().coverage, "complete");
     const range =
       "/api/v1/calendar/busy?from=2030-01-07T05:00:00Z&to=2030-01-08T05:00:00Z";
     const busy = (await r(a, "GET", range)).json();
@@ -227,6 +345,37 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
       )
     ).json();
     assert.equal(outside.coverage, "unknown");
+    now.setTime(now.getTime() + 61000);
+    const refreshWeek = (weekStart: string, reason = "manual") =>
+      r(a, "POST", "/api/v1/calendar/refresh", {
+        periodId: period,
+        reason,
+        weekStart,
+      });
+    assert.equal((await refreshWeek("2030-01-01")).statusCode, 422);
+    assert.equal(
+      (await refreshWeek("2029-12-31", "foreground")).statusCode,
+      422,
+    );
+    const weekly = await refreshWeek("2029-12-31");
+    assert.equal(weekly.statusCode, 202, weekly.body);
+    assert.equal((await refreshWeek("2029-12-31")).json().deduplicated, true);
+    assert.equal((await refreshWeek("2030-01-07")).statusCode, 409);
+    await worker.process((await worker.claim())!);
+    assert.equal(
+      (await r(a, "GET", weekly.json().statusUrl)).json().status,
+      "succeeded",
+    );
+    assert.deepEqual(weeklyQueries, [visibleWeek]);
+    const weeklyBusy = (
+      await r(
+        a,
+        "GET",
+        `/api/v1/calendar/busy?from=${visibleWeek.from}&to=${visibleWeek.to}`,
+      )
+    ).json();
+    assert.equal(weeklyBusy.coverage, "complete");
+    assert.deepEqual(weeklyBusy.busy, weekBlocks);
     const availability = await r(
       a,
       "GET",
@@ -318,6 +467,22 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
     assert.equal(revoked, 1);
     assert.equal(refreshes, 1);
     assert.equal((await r(a, "GET", "/api/v1/auth/session")).statusCode, 200);
+    const combined = await authorize(false, false, "fixture-title-grant");
+    assert.equal(combined.statusCode, 200, combined.body);
+    assert.equal(combined.json().eventTitlesAuthorized, true);
+    assert.equal(combined.json().eventTitlesEnabled, false);
+    const combinedDisconnected = await r(
+      a,
+      "DELETE",
+      "/api/v1/calendar/connection",
+      undefined,
+      `"calendar-${combined.json().revision}"`,
+    );
+    assert.equal(combinedDisconnected.json().revocation, "confirmed");
+    assert.equal(
+      combinedDisconnected.json().connection.eventTitlesAuthorized,
+      false,
+    );
     const privateDenied = await f.db.pool.query(
       "select has_table_privilege(current_user,'app.calendar_credentials','select') as allowed",
     );

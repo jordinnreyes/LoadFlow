@@ -27,7 +27,7 @@ API en `http://127.0.0.1:3001`; OpenAPI en `/api/v1/openapi.json`. No es un desp
 | GET /calendar/connection | Estado, revisiones, última lectura y política de desarrollo |
 | GET /calendar/calendars | Lista persistida para seleccionar; no consulta eventos |
 | PUT /calendar/selection | Selección explícita; inicialmente ninguna fuente seleccionada |
-| POST /calendar/refresh | `{periodId,reason:open|resume|manual|foreground}` → 202/job deduplicado |
+| POST /calendar/refresh | `{periodId,reason:open\|resume\|manual\|foreground}` → 202/job deduplicado. Con `manual` admite `weekStart` o `includeCurrentWeek: true` |
 | GET /jobs/{id} | Estado del trabajo del propietario; no permite reclamar trabajos por HTTP |
 | GET /calendar/busy?from=INSTANT&to=INSTANT | Intervalos, cobertura y antigüedad; sin contenido de eventos |
 | DELETE /calendar/connection | Desconectar, cancelar trabajos e intentar revocación Google |
@@ -56,12 +56,14 @@ CALENDAR_CLIENT_SECRET=SECRETO_DEL_CLIENTE_DE_DESARROLLO
 
 Sin prefijo VITE ni sustitución de `SUPABASE_AUTH_EXTERNAL_GOOGLE_...`. Reiniciar solo API después de configurar. No usar secretos productivos, crear billing ni publicar la app. Tokens Calendar cifrados con AES-GCM/clave versionada; acceso reservado al resolver privado (`cw_identity` con RLS Calendar), no al rol de negocio. No devolverlos al navegador ni registrarlos. El login Supabase no concede Calendar.
 
-Primer refresh obtiene la lista aunque no haya zona confirmada ni fuentes elegidas. Seleccionar explícitamente una fuente accesible y confirmar zona de estudio en disponibilidad, periodo o perfil antes de consultar FreeBusy. El backend no selecciona automáticamente el calendario principal. Aplicar selección no elimina el cooldown de 60 s.
+Al volver de Google, el cliente solicita la lista aunque no haya zona confirmada ni fuentes elegidas. **Guardar y sincronizar** reúne la selección explícita y la confirmación de zona cuando falta. El backend encola una lectura de la semana actual y del horizonte de planificación.
 
 ## Cobertura y trabajos
 
 - Horizonte técnico de fuente: hoy→último plazo conocido, tramos ≤31 días sin truncar. Instantes confirmados conservan su zona académica; fecha sola amplía la consulta conservadoramente sin crear deadline de planificación. Sin plazos futuros se consulta solo hoy. Fuera de cobertura es desconocido. SUP-01/05 de planificación siguen para F4.
-- Estado fresco hasta 30 min desde lectura correcta. Mostrar por separado no conectado/manual, conectado, desactualizado, parcial, error y revocado. En fallos, conservar ocupado anterior. Un error por calendario invalida su frescura aunque el último snapshot sea reciente. No leer títulos, descripciones, asistentes ni modificar eventos.
+- **Actualizar esta semana** envía `reason: "manual"` y `weekStart` (lunes) para leer los siete días visibles en la zona de visualización. Las solicitudes manuales se encolan hasta que hayan pasado 3 s desde el último trabajo terminado. Las solicitudes no manuales conservan el límite de 60 s y los fallos de Google siguen respetando su backoff.
+- Estado fresco hasta 30 min desde lectura correcta. Mostrar por separado no conectado/manual, conectado, desactualizado, parcial, error y revocado. En fallos, conservar ocupado anterior. Un error por calendario invalida su frescura aunque el último snapshot sea reciente. FreeBusy usa solo intervalos.
+- En F6, **Conectar Google Calendar** solicita `calendar.events.readonly` junto con lista y ocupación. En Calendario, **Mostrar/Ocultar títulos** cambia la visibilidad con `PUT /calendar/event-titles`. Si falta el permiso, **Mostrar títulos** abre el consentimiento para completarlo con la misma cuenta conectada. Los títulos se leen al abrir la semana visible y solo para los calendarios seleccionados. La consulta puede devolver cobertura parcial si un calendario falla o alcanza el límite de lectura.
 - Máximo 3 intentos totales por trabajo, mínimo 60 s entre solicitudes/reintentos y Retry-After respetado. 401 permite una renovación; invalid_grant requiere reconectar. Un 403 de permisos no se confunde con límite de cuota.
 - Worker consulta la cola cada 2 s; no llama a Google sin un trabajo solicitado. Reclama mediante SKIP LOCKED/lease de 60 s, heartbeat de 20 s y comprobaciones de revisiones antes/después de red. No hay SQL abierto durante Google. Snapshots, cambios de entrada y finalización/reintento se confirman juntos. Cola de tests aislada internamente de la real; su nombre no se acepta por HTTP.
 - La función privilegiada de reclamación descubre solo la cola. No concede bypass de RLS de negocio. Un ID HTTP no permite ver/ejecutar trabajos ajenos. El worker espera el trabajo en curso al cerrar la API y evita iniciar otro.

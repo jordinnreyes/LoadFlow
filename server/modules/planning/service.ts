@@ -979,15 +979,34 @@ export class PlanningService {
         const selectedBalances = result.balances.filter((b) =>
           deadlineActivityIds.includes(b.activityId),
         );
-        const utilization = (kind: Session["kind"]) =>
-          range
+        const utilization = (kind: Session["kind"], span = range) =>
+          span
             ? minutes(
                 intersect(
                   sessions.filter((s) => s.kind === kind && validIds.has(s.id)),
-                  [range],
+                  [span],
                 ),
               )
             : 0;
+        const activityDates = new Map(snapshot.activities.map((activity) => [activity.id, activity.dueDate]));
+        const days = [];
+        for (let day = Temporal.PlainDate.from(start); day.toString() < end; day = day.add({ days: 1 })) {
+          const date = day.toString();
+          const span = zone ? {
+            start: dayBoundary(date, zone) / 60000,
+            end: dayBoundary(day.add({ days: 1 }).toString(), zone) / 60000,
+          } : null;
+          const balances = selectedBalances.filter((balance) => activityDates.get(balance.activityId) === date);
+          days.push({
+            date,
+            capacityMinutes: span && snapshot.availabilityKnown ? minutes(intersect(snapshot.windows, [span])) : null,
+            studyMinutes: utilization("study", span),
+            groupMinutes: utilization("group", span),
+            unplacedMinutes: balances.some((balance) => balance.unplaced === null)
+              ? null
+              : balances.reduce((sum, balance) => sum + (balance.unplaced ?? 0), 0),
+          });
+        }
         const incompleteActivityIds = [
           ...new Set(
             issues
@@ -1008,6 +1027,7 @@ export class PlanningService {
               : null,
           studyMinutes: utilization("study"),
           groupMinutes: utilization("group"),
+          days,
           incompleteActivityIds,
           unplacedMinutes: selectedBalances.some((b) => b.unplaced === null)
             ? null

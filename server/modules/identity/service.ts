@@ -34,6 +34,7 @@ export class Identity {
     readonly academics: Academics,
     readonly config: {
       origin: string;
+      googleCallbackOrigin?: string;
       encryptionKey: string;
       googleEnabled: boolean;
     },
@@ -277,7 +278,7 @@ export class Identity {
         "Google Sign-In requiere configuración OAuth de pruebas; el correo sigue disponible.",
       );
     const { url, storage } = await this.provider.googleStart(
-      `${this.config.origin}/api/v1/auth/google/callback`,
+      new URL("/api/v1/auth/google/callback", this.config.googleCallbackOrigin ?? this.config.origin).toString(),
       prompt,
     );
     const state = opaque();

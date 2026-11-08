@@ -33,6 +33,7 @@ export function useRoute() {
       setPath(next);
     };
     window.addEventListener("hashchange", changed);
+    changed();
     return () => window.removeEventListener("hashchange", changed);
   }, []);
   return path;

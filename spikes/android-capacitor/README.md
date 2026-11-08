@@ -6,7 +6,7 @@
 
 En la inspección inicial del 03/11/2026 no se encontraron Java, `adb` ni Gradle en PATH ni Android Studio en la ruta estándar comprobada. No se ha compilado, generado ni instalado un APK por esa inspección. Gradle se ejecutará mediante el wrapper del proyecto, no requiere una instalación global. Registrar por separado scaffolding, sync, compilación, instalación y comprobaciones.
 
-1. Usar Node 24 fijado por el repositorio. En esta carpeta: `npm ci` y `npm run web`. Se compila la misma raíz y se copian assets generados a `www/`, ignorado por Git.
+1. Usar Node 24 fijado por el repositorio. En esta carpeta: `npm ci` y `npm run web`. El modo `android-spike` compila la demostración del frontend React directamente en `www/`, ignorado por Git.
 2. Si todavía no existe `android/`, ejecutar `npx cap add android`; después `npm run sync`. No repetir `add` sobre el proyecto generado ni crear otra copia del frontend.
 3. Instalar/configurar Android Studio y SDK/JDK compatibles con Capacitor 8, siguiendo [la documentación oficial](https://capacitorjs.com/docs/getting-started/environment-setup). No fijar una compatibilidad por intuición: registrar versiones y errores. Definir `ANDROID_HOME`/SDK local en `local.properties` ignorado según la instalación; usar emulador o dispositivo autorizado.
 4. Abrir `npm run open` o, desde `android/`, ejecutar `.\gradlew.bat assembleDebug` en PowerShell (`./gradlew assembleDebug` en Linux). Salida esperada solo si el build pasa: `app/build/outputs/apk/debug/app-debug.apk`. Registrar SHA-256; no confundir archivo existente con prueba de ejecución.

@@ -217,6 +217,16 @@ export const Weekly = Type.Object(
           studyMinutes: Type.Integer({ minimum: 0 }),
           groupMinutes: Type.Integer({ minimum: 0 }),
           unplacedMinutes: NullableMinutes,
+          days: Type.Array(
+            Type.Object({
+              date: Type.String({ format: "date" }),
+              capacityMinutes: NullableMinutes,
+              studyMinutes: Type.Integer({ minimum: 0 }),
+              groupMinutes: Type.Integer({ minimum: 0 }),
+              unplacedMinutes: NullableMinutes,
+            }, strict),
+            { maxItems: 7 },
+          ),
           incompleteActivityIds: Type.Array(Id),
           state: Type.Union([
             Type.Literal("empty"),

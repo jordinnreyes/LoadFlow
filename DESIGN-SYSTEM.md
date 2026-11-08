@@ -3,15 +3,19 @@
 **Versión:** refinamiento visual 1.1 · **Fecha:** 2 de noviembre de 2026.  
 **Fuente de producto:** [PRD-v6.md](./PRD-v6.md), versión 0.6.0.  
 **Contrato de comportamiento:** [UX-FLOWS.md](./UX-FLOWS.md), especialmente C-01–C-10, pantallas S01–S12 y supuestos SUP-01–SUP-11.  
-**Estado:** refinamiento del prototipo web responsive a partir de las referencias visuales de Stitch proporcionadas por el promotor; pendiente de revisión visual. No constituye certificación de accesibilidad.
+**Estado:** el promotor aprobó la propuesta visual de Stitch revisada para F6. Los tokens implementados están en `src/styles/tokens.css` y prevalecen sobre la paleta histórica de este documento.
 
 **Alcance de esta revisión:** paleta, jerarquía, superficies y adaptación visual. Se conserva íntegro el contrato funcional de UX-FLOWS y el PRD. La marca visible es CargaWise; se reutiliza el icono local de libro como identificador provisional. No se incorporan las funciones, cifras ni afirmaciones de extracción asistida que aparecen en las capturas.
+
+- El tema oscuro es el inicial. Ajustes → Apariencia permite elegir Claro u Oscuro. La preferencia se aplica a todas las pantallas y se guarda en el navegador cuando el almacenamiento está disponible.
+- La tarjeta superior del tablero presenta carga, disponibilidad y exceso con una retícula y barras diarias. El rayado representa horas sin ubicar en la fecha del plazo. Las flechas cambian la única semana visible y los filtros operan en su detalle.
+- Las obligaciones se muestran como tarjetas minimalistas con espacio para título, curso, prioridad, plazo y esfuerzo. Ajustes separa el alcance Free y los detalles desplegables de las estimaciones Premium.
 
 ## 1. Principios y personalidad visual
 
 **[PRD]** El centro es anticipar sobrecarga académica según esfuerzo estimado y disponibilidad real, con control sobre los cambios. Free conserva todo el núcleo; Premium añade sugerencias orientativas. Las decisiones funcionales v6 prevalecen sobre cualquier elección estética de este documento.
 
-**[UX]** Dirección visual: educativa, profesional, serena y directa. Fondos claros, tinta oscura, acento azul, jerarquía tipográfica y tarjetas con espacios definidos. La sensación de claridad procede de mostrar qué vence, qué trabajo está programado, qué falta conocer y qué decisión puede tomar el estudiante. No se imita literalmente ninguna interfaz competidora.
+**[UX]** Dirección visual: educativa, serena y directa. Fondos pizarra en oscuro y marfil en claro, acento lavanda o índigo, encabezados de estilo editorial y números monoespaciados. La sensación de claridad procede de mostrar qué vence, qué trabajo está programado, qué falta conocer y qué decisión puede tomar el estudiante.
 
 | Principio | Consecuencia en componentes |
 |---|---|
@@ -24,7 +28,7 @@
 | Acceso gratuito claro | Importación, prioridades, sesiones, alertas y tiempo real nunca llevan candado Premium |
 | Lenguaje sin culpa | Describir horas y restricciones; evitar «vas mal», «fracaso», «semana perfecta» y promesas de salud/notas |
 
-No se diseñan nuevas ilustraciones, modo oscuro, librería de componentes ni proveedor tipográfico externo. El refinamiento conserva React, TypeScript, Vite y CSS propio del prototipo web responsive; no supone una decisión de arquitectura productiva. Se propone modo claro inicial; cualquier ampliación deberá conservar significado y contraste. La aprobación de este sistema no resuelve las políticas pendientes del PRD §15.
+El refinamiento conserva React, TypeScript, Vite y CSS propio. Ambos temas mantienen los estados semánticos y usan las familias tipográficas disponibles en el dispositivo. La aprobación visual es independiente de las políticas pendientes del PRD §15.
 
 ## 2. Colores y tokens semánticos
 
@@ -185,7 +189,7 @@ Valores **[UX]** propuestos por capacidad de contenido, no por marcas de disposi
 | `layout.header.minHeight` | 64 px | Crece con texto | No recorta contenido al ampliar fuente |
 | `layout.bottomNav.minHeight` | 64 px + área segura | Solo compacto | Compensar espacio al final de contenido |
 
-El rango de tarjetas inicial sigue siendo cinco semanas, con desplazamiento vertical y selector; no cinco columnas. Fechas, importes de horas y etiquetas no desaparecen para «hacer caber». La página general no exige desplazamiento horizontal; tablas/calendarios que lo requieran lo localizan y ofrecen lista/agenda equivalente. Objetivo de reflujo hasta 320 px CSS; probar ampliación sin perder acciones. [Referencia de reflujo W3C](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html).
+El tablero muestra una semana por página y abre inicialmente la actual. El selector recorre el horizonte disponible. Fechas, horas y etiquetas se conservan al cambiar de ancho. El objetivo de reflujo es 320 px CSS. Las tablas o calendarios con desplazamiento horizontal lo limitan al componente y ofrecen lista o agenda equivalente. [Referencia de reflujo W3C](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html).
 
 El teclado móvil no debe ocultar el campo activo, errores ni acciones finales. Una barra inferior de acciones respeta área segura y deja espacio reservado en el contenido. En horizontal o con texto grande puede pasar a flujo normal. Se permite orientación vertical u horizontal; no forzar una para completar flujos.
 

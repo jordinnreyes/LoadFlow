@@ -1,6 +1,14 @@
 import { randomUUID, createHash } from "node:crypto";
 import { sql, type SQL } from "drizzle-orm";
-import { calendarRanges } from "./ranges.js";
+import {
+  calendarRanges,
+  calendarWeekRange,
+  visibleWeekStart,
+} from "./ranges.js";
+import type {
+  EventsDto,
+  RefreshInput,
+} from "../../../packages/contracts/calendar.js";
 import { ownerTransaction } from "../../db/client.js";
 import { DomainError, notFound } from "../../errors.js";
 import type { Context } from "../academics/service.js";
@@ -18,6 +26,7 @@ import { snapshotCoverage, type StoredSnapshot } from "./coverage.js";
 import {
   CalendarFailure,
   CALENDAR_POLICY,
+  EVENT_TITLES_SCOPE,
   granted,
   type CalendarProvider,
   type Token,
@@ -29,6 +38,9 @@ type ConnectionRow = {
   owner_id: string;
   id: string;
   credential_id: string | null;
+  event_titles_credential_id: string | null;
+  event_titles_revision: number;
+  event_titles_visible: boolean;
   state: "active" | "disconnected" | "revoked";
   revision: number;
   selection_revision: number;
@@ -61,6 +73,10 @@ export type JobRow = {
   finished_at: Date | null;
   safe_error: string | null;
   lease_token: string | null;
+};
+type ScopedJob = JobRow & {
+  requested_week: string | null;
+  include_current_week: boolean;
 };
 const query = async <T>(ctx: Context, statement: SQL) =>
   (await ctx.db.execute(statement)).rows as unknown as T[];
@@ -113,6 +129,8 @@ export class CalendarService {
     const c = await this.connectionRow(ctx),
       sources = await this.sourceRows(ctx),
       selectedCount = sources.filter((s) => s.selected).length;
+    const eventTitlesAuthorized =
+      c?.state === "active" && !!c.event_titles_credential_id;
     let state = "not_connected";
     if (c?.state === "revoked") state = "revoked";
     else if (c?.state === "active")
@@ -134,6 +152,8 @@ export class CalendarService {
       revision: c?.revision ?? 0,
       selectionRevision: c?.selection_revision ?? 0,
       selectedCount,
+      eventTitlesAuthorized,
+      eventTitlesEnabled: eventTitlesAuthorized && !!c?.event_titles_visible,
       lastAttemptAt: iso(c?.last_attempt_at ?? null),
       lastSuccessAt: iso(c?.last_success_at ?? null),
       safeError: c?.safe_error ?? null,
@@ -168,19 +188,26 @@ export class CalendarService {
     for (const p of periods)
       await this.availability.changed(ctx, p.id, kind, summary);
   }
-  async authorize(session: SessionContext) {
+  async authorize(session: SessionContext, eventTitles = false) {
     if (!this.provider) throw unavailable();
     const state = opaque(),
       verifier = opaque(),
       browser = opaque(),
       expiresAt = new Date(this.now().getTime() + 10 * 60000).toISOString();
-    const revision = await this.academics.read(
-      session.ownerId,
-      async (ctx) => (await this.connectionRow(ctx))?.revision ?? 0,
+    const current = await this.academics.read(session.ownerId, async (ctx) =>
+      this.connectionRow(ctx),
     );
+    if (
+      eventTitles &&
+      (current?.state !== "active" || current.event_titles_credential_id)
+    )
+      throw invalid(
+        "CALENDAR_TITLE_AUTH_UNAVAILABLE",
+        "Conecta Google Calendar antes de activar los títulos.",
+      );
     await ownerTransaction(this.identity.pool, session.ownerId, async (c) => {
       await c.query(
-        "insert into app.calendar_oauth_transactions(id,owner_id,session_id,state_hash,browser_hash,verifier_ciphertext,base_revision,expires_at) values($1,$2,$3,$4,$5,$6,$7,$8)",
+        "insert into app.calendar_oauth_transactions(id,owner_id,session_id,state_hash,browser_hash,verifier_ciphertext,base_revision,expires_at,request_event_titles,base_event_titles_revision) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
         [
           randomUUID(),
           session.ownerId,
@@ -188,8 +215,10 @@ export class CalendarService {
           hash(state),
           hash(browser),
           this.identity.secrets.encrypt(verifier),
-          revision,
+          current?.revision ?? 0,
           expiresAt,
+          eventTitles,
+          current?.event_titles_revision ?? 0,
         ],
       );
     });
@@ -218,6 +247,8 @@ export class CalendarService {
             browser_hash: string;
             verifier_ciphertext: string;
             base_revision: number;
+            request_event_titles: boolean;
+            base_event_titles_revision: number;
             expires_at: Date;
             consumed_at: Date | null;
           }>(
@@ -260,21 +291,38 @@ export class CalendarService {
     } catch (e) {
       throw this.safeError(e);
     }
-    if (!granted(token.scopes))
+    if (
+      !granted(token.scopes) ||
+      (transaction.request_event_titles &&
+        !token.scopes.includes(EVENT_TITLES_SCOPE))
+    )
       throw new DomainError(
         403,
         "CALENDAR_SCOPES_REQUIRED",
-        "Autoriza únicamente los dos permisos necesarios de Calendar.",
+        "Google no concedió los permisos solicitados de Calendar.",
       );
+    let primary: string | undefined;
+    if (transaction.request_event_titles) {
+      try {
+        primary = (await this.provider.calendars(token)).find(
+          (source) => source.primary,
+        )?.providerId;
+      } catch (e) {
+        throw this.safeError(e);
+      }
+    }
     const credentialId = randomUUID();
+    const titlesCredentialId = token.scopes.includes(EVENT_TITLES_SCOPE)
+      ? credentialId
+      : null;
     await ownerTransaction(this.identity.pool, session.ownerId, async (c) => {
       await c.query(
         "insert into app.calendar_credentials(id,owner_id,ciphertext) values($1,$2,$3)",
         [credentialId, session.ownerId, this.identity.secrets.encrypt(token)],
       );
     });
-    try {
-      return await this.academics.read(session.ownerId, async (ctx) => {
+    const result = await this.academics
+      .read(session.ownerId, async (ctx) => {
         const old = await this.connectionRow(ctx);
         if ((old?.revision ?? 0) !== transaction.base_revision)
           throw new DomainError(
@@ -282,26 +330,60 @@ export class CalendarService {
             "CALENDAR_FLOW_OUTDATED",
             "La conexión cambió. Inicia nuevamente la autorización.",
           );
+        if (transaction.request_event_titles) {
+          if (
+            old?.state !== "active" ||
+            old.event_titles_revision !== transaction.base_event_titles_revision
+          )
+            throw new DomainError(
+              409,
+              "CALENDAR_FLOW_OUTDATED",
+              "La conexión cambió. Inicia nuevamente la autorización.",
+            );
+          const sources = await this.sourceRows(ctx);
+          if (
+            !primary ||
+            !sources.some(
+              (source) =>
+                source.primary_calendar &&
+                source.accessible &&
+                source.provider_id === primary,
+            )
+          )
+            throw invalid(
+              "CALENDAR_GOOGLE_ACCOUNT_MISMATCH",
+              "Autoriza los títulos con la misma cuenta de Google que conectaste a Calendar.",
+            );
+          await ctx.db.execute(
+            sql`update app.calendar_connections set event_titles_credential_id=${credentialId},event_titles_visible=true,event_titles_revision=event_titles_revision+1 where owner_id=${ctx.owner}`,
+          );
+          return { connection: await this.connection(ctx), retired: null };
+        }
         await ctx.db.execute(
-          sql`insert into app.calendar_connections(owner_id,id,credential_id,state,granted_scopes,revision,changed_at) values(${ctx.owner},${randomUUID()},${credentialId},'active',array(select jsonb_array_elements_text(${JSON.stringify(token.scopes)}::jsonb)),1,${this.now().toISOString()}) on conflict(owner_id) do update set credential_id=excluded.credential_id,state='active',granted_scopes=excluded.granted_scopes,revision=app.calendar_connections.revision+1,last_attempt_at=null,last_success_at=null,safe_error=null,changed_at=excluded.changed_at`,
+          sql`insert into app.calendar_connections(owner_id,id,credential_id,state,granted_scopes,revision,changed_at,event_titles_credential_id) values(${ctx.owner},${randomUUID()},${credentialId},'active',array(select jsonb_array_elements_text(${JSON.stringify(token.scopes)}::jsonb)),1,${this.now().toISOString()},${titlesCredentialId}) on conflict(owner_id) do update set credential_id=excluded.credential_id,state='active',granted_scopes=excluded.granted_scopes,revision=app.calendar_connections.revision+1,last_attempt_at=null,last_success_at=null,safe_error=null,changed_at=excluded.changed_at,event_titles_credential_id=excluded.event_titles_credential_id,event_titles_visible=false,event_titles_revision=app.calendar_connections.event_titles_revision+1`,
         );
+        if (old)
+          await ctx.db.execute(
+            sql`update app.calendar_sources set accessible=false,selected=false where owner_id=${ctx.owner}`,
+          );
         await this.cancelJobs(ctx);
         await this.invalidate(ctx, "calendar_connected", {
           beforeRevision: old?.revision ?? 0,
           afterRevision: (old?.revision ?? 0) + 1,
           sessionsChanged: false,
         });
-        return this.connection(ctx);
+        return {
+          connection: await this.connection(ctx),
+          retired: old?.event_titles_credential_id,
+        };
+      })
+      .catch(async (e: unknown) => {
+        await this.deleteCredential(session.ownerId, credentialId);
+        throw e;
       });
-    } catch (e) {
-      await ownerTransaction(this.identity.pool, session.ownerId, (c) =>
-        c.query(
-          "delete from app.calendar_credentials where owner_id=$1 and id=$2",
-          [session.ownerId, credentialId],
-        ),
-      );
-      throw e;
-    }
+    if (result.retired)
+      await this.deleteCredential(session.ownerId, result.retired);
+    return result.connection;
   }
   safeError(e: unknown) {
     const f =
@@ -393,7 +475,15 @@ export class CalendarService {
       ),
     );
   }
-  async currentToken(owner: string, c: ConnectionRow) {
+  private deleteCredential(owner: string, id: string) {
+    return ownerTransaction(this.identity.pool, owner, (c) =>
+      c.query(
+        "delete from app.calendar_credentials where owner_id=$1 and id=$2",
+        [owner, id],
+      ),
+    );
+  }
+  async currentToken(owner: string, c: Pick<ConnectionRow, "credential_id">) {
     if (!this.provider || !c.credential_id)
       throw new CalendarFailure("CALENDAR_CREDENTIAL_MISSING", false, 0, true);
     let token = await this.credential(owner, c.credential_id);
@@ -425,7 +515,7 @@ export class CalendarService {
             },
           };
         await ctx.db.execute(
-          sql`update app.calendar_connections set state='disconnected',credential_id=null,revision=revision+1,changed_at=${this.now().toISOString()},safe_error=null where owner_id=${owner}`,
+          sql`update app.calendar_connections set state='disconnected',credential_id=null,revision=revision+1,changed_at=${this.now().toISOString()},safe_error=null,event_titles_credential_id=null,event_titles_visible=false,event_titles_revision=event_titles_revision+1 where owner_id=${owner}`,
         );
         await this.cancelJobs(ctx);
         await this.invalidate(ctx, "calendar_disconnected", {
@@ -439,6 +529,7 @@ export class CalendarService {
             connection: await this.connection(ctx),
             revocation: c.credential_id ? "pending" : "not_required",
             credentialId: c.credential_id,
+            titlesCredentialId: c.event_titles_credential_id,
           },
         };
       },
@@ -447,7 +538,13 @@ export class CalendarService {
       connection: unknown;
       revocation: string;
       credentialId?: string | null;
+      titlesCredentialId?: string | null;
     };
+    if (
+      privateData.titlesCredentialId &&
+      privateData.titlesCredentialId !== privateData.credentialId
+    )
+      await this.deleteCredential(owner, privateData.titlesCredentialId);
     let revocation = privateData.revocation;
     if (privateData.credentialId) {
       try {
@@ -482,11 +579,20 @@ export class CalendarService {
       data: { connection: privateData.connection, revocation },
     };
   }
-  refresh(
-    owner: string,
-    key: string | undefined,
-    input: { periodId: string; reason: string },
-  ) {
+  refresh(owner: string, key: string | undefined, input: RefreshInput) {
+    if (input.weekStart || input.includeCurrentWeek) {
+      if (input.reason !== "manual")
+        throw invalid(
+          "CALENDAR_WEEK_REQUIRES_MANUAL_REFRESH",
+          "Actualiza la semana desde el calendario.",
+        );
+      if (input.weekStart && input.includeCurrentWeek)
+        throw invalid(
+          "INVALID_CALENDAR_WEEK",
+          "Elige un solo alcance de actualización.",
+        );
+      if (input.weekStart) visibleWeekStart(input.weekStart);
+    }
     return this.academics.mutate(
       owner,
       "calendar-refresh",
@@ -502,11 +608,22 @@ export class CalendarService {
           );
         if (!this.provider) throw unavailable();
         const active = (
-          await query<JobRow>(
+          await query<ScopedJob>(
             ctx,
-            sql`select * from app.jobs where owner_id=${owner} and queue_name=${this.queueName} and status in ('queued','running') order by created_at desc limit 1`,
+            sql`select *, week_start::text as requested_week from app.jobs where owner_id=${owner} and queue_name=${this.queueName} and status in ('queued','running') order by created_at desc limit 1`,
           )
         )[0];
+        if (
+          active &&
+          (active.requested_week !== (input.weekStart ?? null) ||
+            active.include_current_week !== !!input.includeCurrentWeek ||
+            active.period_id !== input.periodId)
+        )
+          throw new DomainError(
+            409,
+            "CALENDAR_REFRESH_IN_PROGRESS",
+            "Hay otra consulta en curso. Espera a que termine y vuelve a actualizar.",
+          );
         if (active)
           return {
             status: 202,
@@ -517,23 +634,39 @@ export class CalendarService {
             },
           };
         const previous = (
-          await query<{ created_at: Date }>(
+          await query<{ created_at: Date; finished_at: Date | null }>(
             ctx,
-            sql`select created_at from app.jobs where owner_id=${owner} and queue_name=${this.queueName} order by created_at desc limit 1`,
+            sql`select created_at,finished_at from app.jobs where owner_id=${owner} and queue_name=${this.queueName} order by created_at desc limit 1`,
           )
         )[0];
+        const now = this.now();
+        const manual = input.reason === "manual";
         if (
+          !manual &&
           previous &&
-          this.now().getTime() - new Date(previous.created_at).getTime() < 60000
+          now.getTime() - new Date(previous.created_at).getTime() <
+            CALENDAR_POLICY.cooldownSeconds * 1000
         )
           throw new DomainError(
             429,
             "CALENDAR_COOLDOWN",
             "Espera 60 segundos antes de volver a solicitar una lectura.",
           );
+        const runAfter =
+          manual && previous
+            ? new Date(
+                Math.max(
+                  now.getTime(),
+                  new Date(
+                    previous.finished_at ?? previous.created_at,
+                  ).getTime() +
+                    CALENDAR_POLICY.manualCooldownSeconds * 1000,
+                ),
+              )
+            : now;
         const id = randomUUID();
         await ctx.db.execute(
-          sql`insert into app.jobs(id,owner_id,period_id,type,connection_revision,selection_revision,dedupe_key,status,run_after,created_at,queue_name) values(${id},${owner},${input.periodId},'calendar_refresh',${c.revision},${c.selection_revision},'calendar_refresh','queued',${this.now().toISOString()},${this.now().toISOString()},${this.queueName})`,
+          sql`insert into app.jobs(id,owner_id,period_id,type,connection_revision,selection_revision,dedupe_key,status,run_after,created_at,queue_name,week_start,include_current_week) values(${id},${owner},${input.periodId},'calendar_refresh',${c.revision},${c.selection_revision},'calendar_refresh','queued',${runAfter.toISOString()},${now.toISOString()},${this.queueName},${input.weekStart ?? null},${!!input.includeCurrentWeek})`,
         );
         const job = (
           await query<JobRow>(
@@ -646,16 +779,116 @@ export class CalendarService {
   getBusy(owner: string, from: string, to: string) {
     return this.academics.read(owner, (ctx) => this.busy(ctx, from, to));
   }
+  setEventTitleVisibility(
+    owner: string,
+    key: string | undefined,
+    visible: boolean,
+  ) {
+    return this.academics.mutate(
+      owner,
+      "calendar-title-visibility",
+      key,
+      { visible },
+      async (ctx) => {
+        const c = await this.connectionRow(ctx);
+        if (visible && (c?.state !== "active" || !c.event_titles_credential_id))
+          throw invalid(
+            "CALENDAR_TITLE_AUTH_REQUIRED",
+            "Autoriza la lectura de eventos de Google Calendar.",
+          );
+        if (c)
+          await ctx.db.execute(
+            sql`update app.calendar_connections set event_titles_visible=${visible},event_titles_revision=event_titles_revision+1 where owner_id=${owner}`,
+          );
+        return {
+          status: 200,
+          data: await this.connection(ctx),
+        };
+      },
+    );
+  }
+  async events(owner: string, from: string, to: string): Promise<EventsDto> {
+    utcInstant(from);
+    utcInstant(to);
+    const duration = Date.parse(to) - Date.parse(from);
+    if (duration <= 0 || duration > 8 * 86400000)
+      throw invalid(
+        "INVALID_RANGE",
+        "Consulta los títulos de una semana a la vez.",
+      );
+    const provider = this.provider;
+    if (!provider) throw unavailable();
+    const target = await this.academics.read(owner, async (ctx) => {
+      const c = await this.connectionRow(ctx);
+      if (
+        c?.state !== "active" ||
+        !c.event_titles_credential_id ||
+        !c.event_titles_visible
+      )
+        return null;
+      const sources = (await this.sourceRows(ctx)).filter(
+        (s) => s.selected && s.accessible,
+      );
+      return {
+        revision: c.revision,
+        titlesRevision: c.event_titles_revision,
+        credential: c.event_titles_credential_id,
+        sources,
+      };
+    });
+    if (!target || !target.sources.length) return { items: [], partial: false };
+    const signal = AbortSignal.timeout(12000);
+    let token: Token;
+    try {
+      token = await this.currentToken(owner, {
+        credential_id: target.credential,
+      });
+      if (!token.scopes.includes(EVENT_TITLES_SCOPE))
+        return { items: [], partial: true };
+    } catch (e) {
+      throw this.safeError(e);
+    }
+    const sources = target.sources.slice(0, 8);
+    const lists = await Promise.allSettled(
+      sources.map((s) =>
+        provider.events(
+          token,
+          { providerId: s.provider_id, timezone: s.timezone },
+          from,
+          to,
+          signal,
+        ),
+      ),
+    );
+    const current = await this.academics.read(owner, (ctx) =>
+      this.connectionRow(ctx),
+    );
+    if (
+      current?.state !== "active" ||
+      current.revision !== target.revision ||
+      current.event_titles_revision !== target.titlesRevision
+    )
+      return { items: [], partial: false };
+    return {
+      items: lists.flatMap((list) =>
+        list.status === "fulfilled" ? list.value.items : [],
+      ),
+      partial:
+        sources.length !== target.sources.length ||
+        lists.some((list) => list.status === "rejected" || list.value.partial),
+    };
+  }
   async prepare(job: JobRow) {
     return this.academics.read(job.owner_id, async (ctx) => {
       const c = await this.connectionRow(ctx),
         current = (
-          await query<JobRow>(
+          await query<ScopedJob>(
             ctx,
-            sql`select * from app.jobs where owner_id=${ctx.owner} and id=${job.id}`,
+            sql`select *, week_start::text as requested_week from app.jobs where owner_id=${ctx.owner} and id=${job.id}`,
           )
         )[0];
       if (
+        !current ||
         !c ||
         c.state !== "active" ||
         c.revision !== job.connection_revision ||
@@ -678,29 +911,40 @@ export class CalendarService {
       )[0];
       const period = await this.academics.requirePeriod(ctx, job.period_id),
         config = await this.availability.configuration(ctx, job.period_id),
-        zone = timezone(
+        planningZone =
           config.configuration?.timezone ??
-            period.timezone ??
-            profile.study_timezone,
+          period.timezone ??
+          profile?.study_timezone,
+        zone = timezone(
+          current.requested_week
+            ? (profile?.study_timezone ?? planningZone)
+            : planningZone,
         );
       if (!zone) throw new CalendarFailure("STUDY_TIMEZONE_REQUIRED");
-      const deadlines = await query<{
-        due_at: Date | null;
-        due_date: string;
-        academic_timezone: string | null;
-      }>(
-        ctx,
-        sql`select due_at,due_date,academic_timezone from app.activities where owner_id=${ctx.owner}`,
-      );
-      const chunks = calendarRanges(
-        this.now(),
-        zone,
-        deadlines.map((d) => ({
-          dueAt: d.due_at ? new Date(d.due_at).toISOString() : null,
-          dueDate: d.due_date,
-          timezone: d.academic_timezone,
-        })),
-      );
+      const deadlines = current.requested_week
+        ? []
+        : await query<{
+            due_at: Date | null;
+            due_date: string;
+            academic_timezone: string | null;
+          }>(
+            ctx,
+            sql`select due_at,due_date,academic_timezone from app.activities where owner_id=${ctx.owner}`,
+          );
+      const chunks = current.requested_week
+        ? [calendarWeekRange(current.requested_week, zone)]
+        : calendarRanges(
+            this.now(),
+            zone,
+            deadlines.map((d) => ({
+              dueAt: d.due_at ? new Date(d.due_at).toISOString() : null,
+              dueDate: d.due_date,
+              timezone: d.academic_timezone,
+            })),
+            current.include_current_week
+              ? (profile?.study_timezone ?? zone)
+              : undefined,
+          );
       await ctx.db.execute(
         sql`update app.calendar_connections set last_attempt_at=${this.now().toISOString()} where owner_id=${ctx.owner}`,
       );

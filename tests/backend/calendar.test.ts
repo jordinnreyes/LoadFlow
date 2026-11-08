@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   GoogleCalendarProvider,
   SCOPES,
+  EVENT_TITLES_SCOPE,
   CalendarFailure,
   retryAfter,
   challenge,
@@ -53,7 +54,7 @@ const config = {
   clientSecret: "fixture-secret",
   callback: "http://127.0.0.1:3001/api/v1/calendar/callback",
 };
-test("Calendar consent is independent, requests only occupancy/list, state and S256 PKCE", () => {
+test("Calendar consent requests list, occupancy and event reading with state and S256 PKCE", () => {
   const provider = new GoogleCalendarProvider(config),
     u = new URL(provider.authorization("fixture-state", "fixture-verifier"));
   assert.equal(u.searchParams.get("state"), "fixture-state");
@@ -61,7 +62,10 @@ test("Calendar consent is independent, requests only occupancy/list, state and S
     u.searchParams.get("code_challenge"),
     challenge("fixture-verifier"),
   );
-  assert.equal(u.searchParams.get("scope"), SCOPES.join(" "));
+  assert.equal(
+    u.searchParams.get("scope"),
+    [...SCOPES, EVENT_TITLES_SCOPE].join(" "),
+  );
   assert.equal(u.searchParams.get("access_type"), "offline");
   assert.equal(u.searchParams.get("include_granted_scopes"), "false");
   assert.ok(!u.toString().includes(config.clientSecret));
@@ -69,6 +73,75 @@ test("Calendar consent is independent, requests only occupancy/list, state and S
     granted([...SCOPES, "https://www.googleapis.com/auth/calendar"]),
     false,
   );
+});
+test("event titles request minimal fields, expand occurrences and handle all-day and hidden events", async () => {
+  const p = new GoogleCalendarProvider(config, async (input) => {
+    const url = new URL(String(input));
+    assert.match(url.pathname, /\/example%40test\/events$/);
+    assert.equal(url.searchParams.get("singleEvents"), "true");
+    const fields = url.searchParams.get("fields") ?? "";
+    assert.match(fields, /summary/);
+    assert.doesNotMatch(fields, /attendees|description|location/);
+    return url.searchParams.has("pageToken")
+      ? Response.json({
+          timeZone: "America/Lima",
+          items: [
+            {
+              summary: "Clase",
+              start: {
+                dateTime: "2030-01-02T09:00:00",
+                timeZone: "America/Lima",
+              },
+              end: { dateTime: "2030-01-02T10:00:00-05:00" },
+              transparency: "transparent",
+            },
+            {
+              summary: "Cancelado",
+              status: "cancelled",
+              start: { date: "2030-01-02" },
+              end: { date: "2030-01-03" },
+            },
+          ],
+        })
+      : Response.json({
+          timeZone: "America/Lima",
+          nextPageToken: "next",
+          items: [
+            {
+              summary: "Día libre",
+              start: { date: "2030-01-01" },
+              end: { date: "2030-01-02" },
+            },
+            { start: { date: "2030-01-02" }, end: { date: "2030-01-03" } },
+          ],
+        });
+  });
+  const result = await p.events(
+    token,
+    { providerId: "example@test", timezone: null },
+    "2030-01-01T00:00:00Z",
+    "2030-01-08T00:00:00Z",
+    AbortSignal.timeout(1000),
+  );
+  assert.deepEqual(result, {
+    items: [
+      {
+        title: "Día libre",
+        startAt: "2030-01-01T05:00:00Z",
+        endAt: "2030-01-02T05:00:00Z",
+        allDay: true,
+        blocksTime: true,
+      },
+      {
+        title: "Clase",
+        startAt: "2030-01-02T14:00:00Z",
+        endAt: "2030-01-02T15:00:00Z",
+        allDay: false,
+        blocksTime: false,
+      },
+    ],
+    partial: false,
+  });
 });
 test("Google adapter limits fields, paginates calendars and batches FreeBusy at 50 without reading events", async () => {
   const urls: string[] = [],

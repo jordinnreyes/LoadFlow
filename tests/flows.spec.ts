@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
 async function login(page: Page, plan = "Free") {
-  await page.goto("/");
+  await page.goto("/?modo=demo");
   if (plan === "Premium")
     await page.getByLabel("Perfil de ejemplo").selectOption("Premium");
   await page.getByRole("button", { name: "Continuar con Google" }).click();
@@ -10,7 +10,7 @@ async function login(page: Page, plan = "Free") {
   );
 }
 async function route(page: Page, path: string) {
-  await page.goto(`/#${path}`);
+  await page.goto(`/?modo=demo#${path}`);
 }
 async function state(page: Page) {
   return page.evaluate(() => {
@@ -26,10 +26,475 @@ async function scenario(page: Page, name: string) {
     .click();
   await expect(page.locator(".page-heading h1")).toContainText("Tu semana,");
 }
+
+test("dark by default, light survives reload and has the same week controls", async ({
+  page,
+}) => {
+  await login(page);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await route(page, "/ajustes");
+  await page.getByRole("button", { name: "Claro", exact: true }).click();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Claro", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await route(page, "/tablero");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator(".week-card")).toHaveCount(1);
+  await expect(page.locator(".dashboard-stats")).toHaveCount(0);
+});
+
+test("connected access uses the HTTP contract and never loads the demo workspace", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  let signedIn = false;
+  let calendarAuthorized = false;
+  let calendarsFound = false;
+  let calendarSelected = false;
+  let occupancyRefreshed = false;
+  let weekRefreshed = false;
+  let eventTitlesEnabled = false;
+  const calendarConnection = () => ({
+    configured: true,
+    state: !calendarAuthorized
+      ? "not_connected"
+      : weekRefreshed
+        ? "connected"
+        : "partial",
+    selectedCount: calendarSelected ? 1 : 0,
+    eventTitlesAuthorized: calendarAuthorized,
+    eventTitlesEnabled,
+    revision: calendarSelected ? 2 : 1,
+    lastSuccessAt: occupancyRefreshed ? "2026-11-02T13:00:00Z" : null,
+  });
+  const user = {
+    id: "test-user",
+    displayName: "Cuenta de integración",
+    studyTimezone: null as string | null,
+    onboardingState: "new",
+    revision: 1,
+  };
+  const session = { authenticated: true, user, csrfToken: "test-csrf" };
+  let activity: {
+    id: string;
+    title: string;
+    dueDate: string;
+    type: string;
+  } | null = null;
+  await page.route("**/api/v1/**", async (route) => {
+    const url = new URL(route.request().url());
+    const path = url.pathname;
+    if (path === "/api/v1/auth/session") {
+      if (signedIn)
+        await route.fulfill({
+          json: session,
+          headers: { date: "Thu, 05 Nov 2026 13:00:00 GMT" },
+        });
+      else
+        await route.fulfill({
+          status: 401,
+          json: {
+            error: {
+              code: "SESSION_REQUIRED",
+              message: "Inicia sesión.",
+              fieldErrors: [],
+              requestId: "test",
+              retryable: false,
+            },
+          },
+        });
+    } else if (path === "/api/v1/auth/email/challenges") {
+      expect(route.request().postDataJSON()).toEqual({
+        email: "f6@fixture.test",
+        intent: "register",
+      });
+      await route.fulfill({
+        status: 202,
+        json: {
+          challengeId: "test-challenge",
+          expiresAt: "2030-01-01T00:00:00Z",
+          message: "Revisa tu correo.",
+        },
+      });
+    } else if (path === "/api/v1/auth/email/verify") {
+      expect(route.request().postDataJSON()).toEqual({
+        challengeId: "test-challenge",
+        code: "123456",
+      });
+      signedIn = true;
+      await route.fulfill({ json: session });
+    } else if (path === "/api/v1/me/capabilities") {
+      await route.fulfill({ json: { plan: "Free" } });
+    } else if (path === "/api/v1/me/preferences") {
+      expect(route.request().headers()["if-match"]).toBe(
+        `"profile-${user.revision}"`,
+      );
+      const update = route.request().postDataJSON();
+      if (user.onboardingState === "new") {
+        expect(update).toEqual({ onboardingState: "seen" });
+        user.onboardingState = "seen";
+      } else {
+        expect(update).toEqual({ studyTimezone: "America/Lima" });
+        user.studyTimezone = update.studyTimezone;
+      }
+      user.revision += 1;
+      await route.fulfill({ json: user });
+    } else if (path === "/api/v1/periods") {
+      await route.fulfill({
+        json: {
+          items: [{ id: "test-period", name: "Periodo desde API" }],
+          nextCursor: null,
+        },
+      });
+    } else if (path === "/api/v1/periods/test-period/weekly-plan") {
+      await route.fulfill({
+        json: {
+          weeks: [
+            {
+              startDate: "2026-11-02",
+              endDate: "2026-11-09",
+              state: activity ? "partial" : "empty",
+              days: [],
+              deadlineActivityIds: activity ? [activity.id] : [],
+              sessions: [],
+              studyMinutes: 0,
+              groupMinutes: 0,
+              capacityMinutes: null,
+              unplacedMinutes: null,
+            },
+          ],
+        },
+      });
+    } else if (path === "/api/v1/periods/test-period/availability") {
+      await route.fulfill({ json: { configuration: null, revision: 0 } });
+    } else if (path === "/api/v1/manual-commitments") {
+      await route.fulfill({ json: { items: [], nextCursor: null } });
+    } else if (path === "/api/v1/calendar/connection") {
+      await route.fulfill({
+        json: calendarConnection(),
+        headers: { etag: `"calendar-${calendarConnection().revision}"` },
+      });
+    } else if (path === "/api/v1/calendar/authorization") {
+      expect(url.searchParams.has("eventTitles")).toBe(false);
+      calendarAuthorized = true;
+      await route.fulfill({
+        json: {
+          authorizationUrl: new URL("/#/disponibilidad?calendar=connected", url)
+            .href,
+        },
+      });
+    } else if (path === "/api/v1/calendar/event-titles") {
+      expect(route.request().method()).toBe("PUT");
+      const { visible } = route.request().postDataJSON();
+      expect(visible).toBe(!eventTitlesEnabled);
+      eventTitlesEnabled = visible;
+      await route.fulfill({ json: calendarConnection() });
+    } else if (path === "/api/v1/calendar/events") {
+      expect(eventTitlesEnabled).toBe(true);
+      expect(url.searchParams.get("from")).toBe("2026-11-02T05:00:00.000Z");
+      expect(url.searchParams.get("to")).toBe("2026-11-09T05:00:00.000Z");
+      await route.fulfill({
+        json: {
+          partial: false,
+          items: [
+            {
+              title: "Clase de Bases de Datos",
+              startAt: "2026-11-02T14:00:00Z",
+              endAt: "2026-11-02T15:00:00Z",
+              allDay: false,
+              blocksTime: true,
+            },
+            {
+              title: "Consulta opcional",
+              startAt: "2026-11-02T14:30:00Z",
+              endAt: "2026-11-02T15:30:00Z",
+              allDay: false,
+              blocksTime: false,
+            },
+          ],
+        },
+      });
+    } else if (path === "/api/v1/calendar/calendars") {
+      await route.fulfill({
+        json: {
+          items: calendarsFound
+            ? [
+                {
+                  id: "test-calendar",
+                  name: "Calendario de prueba",
+                  accessible: true,
+                  selected: calendarSelected,
+                },
+              ]
+            : [],
+        },
+      });
+    } else if (path === "/api/v1/calendar/selection") {
+      expect(route.request().headers()["if-match"]).toBe('"calendar-1"');
+      expect(route.request().postDataJSON()).toEqual({
+        calendarIds: ["test-calendar"],
+      });
+      calendarSelected = true;
+      await route.fulfill({ json: calendarConnection() });
+    } else if (path === "/api/v1/calendar/refresh") {
+      const input = route.request().postDataJSON();
+      expect(input).toEqual({
+        periodId: "test-period",
+        reason: "manual",
+        ...(input.weekStart && { weekStart: "2026-11-02" }),
+        ...(calendarSelected &&
+          !input.weekStart && { includeCurrentWeek: true }),
+      });
+      await route.fulfill({
+        status: 202,
+        json: {
+          job: {
+            id: input.weekStart
+              ? "week-job"
+              : calendarSelected
+                ? "refresh-job"
+                : "discover-job",
+          },
+        },
+      });
+    } else if (path === "/api/v1/jobs/discover-job") {
+      calendarsFound = true;
+      await route.fulfill({ json: { status: "partial" } });
+    } else if (path === "/api/v1/jobs/refresh-job") {
+      occupancyRefreshed = true;
+      await route.fulfill({ json: { status: "partial" } });
+    } else if (path === "/api/v1/jobs/week-job") {
+      weekRefreshed = true;
+      await route.fulfill({ json: { status: "succeeded" } });
+    } else if (path === "/api/v1/calendar/busy") {
+      expect(url.searchParams.get("from")).toBe("2026-11-02T05:00:00.000Z");
+      expect(url.searchParams.get("to")).toBe("2026-11-09T05:00:00.000Z");
+      await route.fulfill({
+        json: {
+          connection: calendarConnection(),
+          coverage: weekRefreshed
+            ? "complete"
+            : occupancyRefreshed
+              ? "partial"
+              : "unknown",
+          lastFetchedAt: calendarConnection().lastSuccessAt,
+          busy: [
+            ...(occupancyRefreshed
+              ? [
+                  {
+                    startAt: "2026-11-06T04:30:00Z",
+                    endAt: "2026-11-06T05:30:00Z",
+                  },
+                ]
+              : []),
+            ...(weekRefreshed
+              ? [
+                  {
+                    startAt: "2026-11-02T14:00:00Z",
+                    endAt: "2026-11-02T15:00:00Z",
+                  },
+                  {
+                    startAt: "2026-11-02T18:00:00Z",
+                    endAt: "2026-11-02T20:00:00Z",
+                  },
+                  {
+                    startAt: "2026-11-08T20:00:00Z",
+                    endAt: "2026-11-08T21:00:00Z",
+                  },
+                ]
+              : []),
+          ],
+        },
+      });
+    } else if (path === "/api/v1/periods/test-period/plan") {
+      await route.fulfill({
+        json: { state: "not_generated", result: null },
+        headers: { etag: '"workspace-1"' },
+      });
+    } else if (path === "/api/v1/periods/test-period/courses") {
+      await route.fulfill({ json: { items: [], nextCursor: null } });
+    } else if (
+      path === "/api/v1/activities" &&
+      route.request().method() === "POST"
+    ) {
+      expect(route.request().headers()["x-csrf-token"]).toBe("test-csrf");
+      expect(route.request().headers()["idempotency-key"]).toBeTruthy();
+      activity = {
+        id: "own-activity",
+        ...route.request().postDataJSON(),
+        revision: 1,
+        pendingMinutes: null,
+        operatingMinutes: null,
+        realTotalMinutes: null,
+      };
+      await route.fulfill({ status: 201, json: activity });
+    } else if (path === "/api/v1/activities") {
+      await route.fulfill({
+        json: { items: activity ? [activity] : [], nextCursor: null },
+      });
+    } else if (path === "/api/v1/activities/own-activity") {
+      await route.fulfill({ json: activity });
+    } else if (path === "/api/v1/auth/logout") {
+      expect(route.request().headers()["x-csrf-token"]).toBe("test-csrf");
+      signedIn = false;
+      await route.fulfill({ status: 204 });
+    } else {
+      await route.abort();
+    }
+  });
+  await page.goto("/#/tablero");
+  await expect(page).toHaveURL(/#\/acceso$/);
+  await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
+  await page.getByLabel("Correo electrónico").fill("f6@fixture.test");
+  await page.getByRole("button", { name: "Enviar código" }).click();
+  await page.getByLabel("Código de verificación").fill("123456");
+  await page.getByRole("button", { name: "Verificar código" }).click();
+  await page.getByRole("button", { name: "Ahora no" }).click();
+  await expect(
+    page.getByText("Sin actividades ni sesiones esta semana.", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => localStorage.getItem("loadflow-prototype-v1")),
+  ).toBeNull();
+  await page.getByRole("link", { name: "Calendario", exact: true }).click();
+  await page
+    .getByRole("link", { name: "Disponibilidad y Calendar", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Conectar Google Calendar", exact: true })
+    .click();
+  await expect(page).toHaveURL(/calendar=connected$/);
+  await page.getByRole("checkbox", { name: "Calendario de prueba" }).check();
+  await page
+    .getByLabel("Zona de estudio", { exact: true })
+    .fill("America/Lima");
+  await page.getByRole("button", { name: "Guardar y sincronizar" }).click();
+  await expect(
+    page.getByText("Google devolvió cobertura parcial.", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Calendario", exact: true }).click();
+  const weekCalendar = page.getByRole("region", {
+    name: "Semana del calendario",
+  });
+  await expect(
+    weekCalendar.getByText("Ocupado · Google Calendar", { exact: true }),
+  ).toHaveCount(2);
+  await expect(weekCalendar.getByText("23:30–24:00")).toBeVisible();
+  await expect(weekCalendar.getByText("00:00–00:30")).toBeVisible();
+  await expect(
+    page.getByText("Cobertura de Google Calendar incompleta"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Actualizar esta semana" }).click();
+  await expect(weekCalendar.getByText("09:00–10:00")).toBeVisible();
+  await expect(weekCalendar.getByText("15:00–16:00")).toBeVisible();
+  await expect(weekCalendar.getByText("00:00", { exact: true })).toBeVisible();
+  await expect(weekCalendar.getByText("24:00", { exact: true })).toBeVisible();
+  const monday = weekCalendar.getByRole("group", { name: "Lun 02" });
+  const positions = await monday
+    .locator(".connected-calendar-entry")
+    .evaluateAll((entries) =>
+      entries.map((entry) => {
+        const block = entry.getBoundingClientRect();
+        const day = entry.parentElement!.getBoundingClientRect();
+        return {
+          hour: ((block.top - day.top) / day.height) * 24,
+          duration: (block.height / day.height) * 24,
+        };
+      }),
+    );
+  expect(positions).toHaveLength(2);
+  expect(positions[0].hour).toBeCloseTo(9, 1);
+  expect(positions[0].duration).toBeCloseTo(1, 1);
+  expect(positions[1].hour).toBeCloseTo(13, 1);
+  expect(positions[1].duration).toBeCloseTo(2, 1);
+  await expect(
+    page.getByText("Cobertura de Google Calendar incompleta"),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Agenda", exact: true }).click();
+  await expect(
+    page
+      .getByRole("region", { name: "Ocupación de Google Calendar" })
+      .getByText("Ocupado · Google Calendar", { exact: true }),
+  ).toHaveCount(5);
+  await page.getByRole("button", { name: "Semana", exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: "Mostrar títulos de Google Calendar",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: "Ocultar títulos de Google Calendar",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(weekCalendar.getByText("Clase de Bases de Datos")).toBeVisible();
+  const overlap = await monday
+    .locator(".connected-calendar-entry")
+    .evaluateAll((entries) =>
+      entries.slice(0, 2).map((entry) => {
+        const { left, right } = entry.getBoundingClientRect();
+        return { left, right };
+      }),
+    );
+  expect(overlap[0].right).toBeLessThan(overlap[1].left);
+  await expect(
+    weekCalendar.getByText("Ocupado · Google Calendar", { exact: true }),
+  ).toHaveCount(4);
+  await page.getByRole("button", { name: "Agenda", exact: true }).click();
+  await expect(
+    page
+      .getByRole("region", { name: "Ocupación de Google Calendar" })
+      .getByText("Clase de Bases de Datos"),
+  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Ocultar títulos de Google Calendar",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: "Mostrar títulos de Google Calendar",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Semana", exact: true }).click();
+  await expect(
+    weekCalendar.getByText("Ocupado · Google Calendar", { exact: true }),
+  ).toHaveCount(5);
+  await expect(weekCalendar.getByText("Clase de Bases de Datos")).toHaveCount(
+    0,
+  );
+  await page.getByRole("link", { name: "Tablero", exact: true }).click();
+  await page
+    .getByRole("link", { name: "Añadir actividad", exact: true })
+    .click();
+  await page.getByLabel("Título de la actividad").fill("Obligación propia");
+  await page.getByLabel("Fecha límite").fill("2026-11-05");
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Obligación propia" }),
+  ).toBeVisible();
+  await page.goto("/#/tablero");
+  await page.reload();
+  await expect(
+    page.getByRole("link", { name: /Obligación propia/ }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Ajustes", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Cerrar sesión", exact: true })
+    .click();
+  await expect(page).toHaveURL(/#\/acceso$/);
+  await expect(page.getByText("Periodo desde API")).toHaveCount(0);
+});
+
 test("first registration, optional Calendar, empty state and session continuity", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?modo=demo");
   await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
   await page.getByLabel("Correo de demostración").fill("nuevo@ejemplo.test");
   await page.getByRole("button", { name: "Crear perfil con correo" }).click();
@@ -47,6 +512,7 @@ test("first registration, optional Calendar, empty state and session continuity"
     page.getByText("Viable según datos", { exact: true }),
   ).toHaveCount(0);
   await page.reload();
+  await expect(page.locator(".page-heading h1")).toContainText("Tu semana,");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await route(page, "/ajustes");
   await page.getByRole("button", { name: "Cerrar sesión simulada" }).click();
@@ -69,9 +535,15 @@ test("dashboard deadlines, advance study and calendar context share data", async
   await expect(page.getByTestId("week-2026-11-02")).toContainText(
     "Viable según datos",
   );
+  await expect(page.locator(".week-card")).toHaveCount(1);
+  for (let step = 0; step < 4; step++) {
+    await page.getByRole("button", { name: "Semana siguiente" }).click();
+  }
   await expect(page.getByTestId("week-2026-11-30")).toContainText(
     "Trabajo adelantado",
   );
+  await expect(page.getByTestId("week-2026-11-02")).toHaveCount(0);
+  await page.getByRole("button", { name: "Esta semana", exact: true }).click();
   await page
     .getByRole("button", {
       name: "PC 3 · Integrales y aplicaciones",
@@ -293,13 +765,13 @@ test("real accumulated hours can be corrected and preparation closes independent
 });
 test("Calendar connects without OAuth and distinguishes stale source", async ({
   page,
+  baseURL,
 }) => {
   const outgoing: string[] = [];
+  const origin = new URL(baseURL!).origin;
   page.on("request", (req) => {
-    if (
-      !req.url().startsWith("http://127.0.0.1:5173") &&
-      !req.url().startsWith("data:")
-    )
+    const url = new URL(req.url());
+    if (url.origin !== origin && url.protocol !== "data:")
       outgoing.push(req.url());
   });
   await login(page);
@@ -377,7 +849,7 @@ test("eligible Premium scenario shows personalized suggestion only with consent"
   await login(page);
   await scenario(page, "Premium con historial");
   await route(page, "/ajustes");
-  await page.getByLabel("Permito usar el historial ficticio").check();
+  await page.getByLabel(/Permitir el uso de mi historial ficticio/).check();
   await route(page, "/calendario/pc-calculo-1");
   await page
     .getByRole("button", { name: "Editar datos o actualizar fecha" })

@@ -69,7 +69,7 @@ Preparación: «No iniciada», «En progreso», «Terminada». Evaluación: «Pe
 
 ### C-06. Horizonte, tarjetas y conteo
 
-Aplicar §10.5.1: cálculo desde hoy hasta la última fecha relevante del periodo confirmado; si falta el cierre del periodo, límite provisional en el último deadline confirmado. El tramo inicial visible comprende esta semana y cuatro siguientes, con acceso al resto del horizonte y aviso de riesgos fuera del tramo. La vista no limita el cálculo a cinco semanas. Interpretación de límite y semana: SUP-01/02.
+Aplicar §10.5.1: cálculo desde hoy hasta la última fecha relevante del periodo confirmado. Si falta el cierre del periodo, el límite provisional es el último plazo confirmado. El tablero abre en la semana actual, muestra una semana por página y permite recorrer el horizonte con el selector. Se indican riesgos en semanas posteriores. Interpretación de límite y semana: SUP-01/02.
 
 Cada tarjeta separa «Vence esta semana» de «Sesiones esta semana». Una actividad puede tener sesiones en varias semanas y un único vencimiento. Las horas se atribuyen a ejecución, no se vuelven a sumar en la tarjeta del deadline. Una semana solo con sesiones tiene trabajo programado. La ausencia de obligaciones y sesiones no prueba viabilidad.
 
@@ -191,7 +191,7 @@ Los contratos C-01–C-10 y el sistema de diseño se aplican a cada ficha. Los e
 - **Datos:** periodo, zona horaria, alcance confirmado/provisional, semanas, deadlines, sesiones por ejecución, capacidad conocida, horas sin ubicar por plazo, reservas, datos incompletos y procedencia/actualización. No se requiere Calendar para consultar.
 - **Estados:** vacío inicial sin cifras falsas; semana sin obligaciones ni sesiones; borradores pendientes fuera del cálculo; incompleto; viable según datos; sobrecarga; conflicto; recalculando; cálculo fallido; advertencia de fuente desactualizada y sincronización pendiente superpuestas. Ver §7.
 - **Free/Premium:** tarjetas, alertas y acciones idénticas; plan visible discretamente en cuenta. No ubicar promoción sobre alertas de déficit.
-- **Responsive:** móvil con tarjetas en lista vertical y selector compacto; web con tarjetas de ancho legible, sin convertirlas en mosaico de cinco columnas diminutas. Las cinco semanas son el tramo disponible, no cinco tarjetas obligadas a caber en un viewport.
+- **Responsive:** móvil y escritorio muestran un resumen gráfico seguido del selector y del detalle de la semana elegida. Las obligaciones se leen en tarjetas de ancho legible, con los mismos datos y acciones en ambos tamaños.
 - **Aceptación UX:** (a) acceso a calendario precede al selector; (b) primer tablero vacío conserva CTA inferior y guía omitible; (c) semana sin deadlines pero con sesiones no figura vacía; (d) «Ver carga» explica horas hasta el plazo; (e) importación y alta manual continúan visibles con datos; (f) una advertencia de Calendar invalida la certeza de horas afectadas sin borrar tarjetas.
 - **PRD:** RF-10/11/19/26; DP-18/24/27.
 
@@ -692,7 +692,7 @@ No hay funcionalidades del MVP exclusivas de un dispositivo. La cuadrícula ampl
 | RNF-13 | C-09; F07/18 | IA no obligatoria Free, uso Premium explícito sin cuotas inventadas |
 | RNF-14 | C-01; S01/07 | Salida oculta datos y login no autoriza Calendar |
 | RNF-15 | S02; §7.1 | Vacío, sin horas, modo manual y obsolescencia diferenciados |
-| DP-27; §10.5.1 | C-06; F10 | Tramo de cinco semanas, horizonte mayor, ejecución sin doble conteo |
+| DP-27; §10.5.1 | C-06; F10 | Una semana por página, horizonte navegable, ejecución sin doble conteo |
 | DP-28; §10.5.2 | C-02; F05 | Mínimos, curso opcional, borradores y confirmación parcial |
 | DP-29; §10.5.3 | C-03; F06/09 | Inicio confirmado, no fragmentación implícita, dependencias declaradas |
 | DP-30; §10.5.4 | C-07; F12/13 | Edición individual fijada, alcance de actividad y deshacer seguro |

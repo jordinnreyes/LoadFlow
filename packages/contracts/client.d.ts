@@ -724,6 +724,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/calendar/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listCalendarEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calendar/event-titles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["setCalendarEventTitleVisibility"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{id}": {
         parameters: {
             query?: never;
@@ -1834,6 +1866,13 @@ export interface operations {
                         csrfToken: string;
                     };
                 };
+            };
+            /** @description Default Response */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Default Response */
             401: {
@@ -10636,7 +10675,9 @@ export interface operations {
     };
     authorizeCalendar: {
         parameters: {
-            query?: never;
+            query?: {
+                eventTitles?: "true";
+            };
             header: {
                 /** @description Origen exacto configurado para el cliente web. */
                 Origin: string;
@@ -10892,6 +10933,8 @@ export interface operations {
                         revision: number;
                         selectionRevision: number;
                         selectedCount: number;
+                        eventTitlesAuthorized: boolean;
+                        eventTitlesEnabled: boolean;
                         lastAttemptAt: string | null;
                         lastSuccessAt: string | null;
                         safeError: string | null;
@@ -10905,10 +10948,19 @@ export interface operations {
                             /** @enum {number} */
                             cooldownSeconds: 60;
                             /** @enum {number} */
+                            manualCooldownSeconds: 3;
+                            /** @enum {number} */
                             maxAttempts: 3;
                         };
                     };
                 };
+            };
+            /** @description Default Response */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Default Response */
             400: {
@@ -11133,6 +11185,8 @@ export interface operations {
                         revision: number;
                         selectionRevision: number;
                         selectedCount: number;
+                        eventTitlesAuthorized: boolean;
+                        eventTitlesEnabled: boolean;
                         lastAttemptAt: string | null;
                         lastSuccessAt: string | null;
                         safeError: string | null;
@@ -11145,6 +11199,8 @@ export interface operations {
                             staleAfterSeconds: 1800;
                             /** @enum {number} */
                             cooldownSeconds: 60;
+                            /** @enum {number} */
+                            manualCooldownSeconds: 3;
                             /** @enum {number} */
                             maxAttempts: 3;
                         };
@@ -11384,6 +11440,8 @@ export interface operations {
                             revision: number;
                             selectionRevision: number;
                             selectedCount: number;
+                            eventTitlesAuthorized: boolean;
+                            eventTitlesEnabled: boolean;
                             lastAttemptAt: string | null;
                             lastSuccessAt: string | null;
                             safeError: string | null;
@@ -11396,6 +11454,8 @@ export interface operations {
                                 staleAfterSeconds: 1800;
                                 /** @enum {number} */
                                 cooldownSeconds: 60;
+                                /** @enum {number} */
+                                manualCooldownSeconds: 3;
                                 /** @enum {number} */
                                 maxAttempts: 3;
                             };
@@ -11637,6 +11697,8 @@ export interface operations {
                             revision: number;
                             selectionRevision: number;
                             selectedCount: number;
+                            eventTitlesAuthorized: boolean;
+                            eventTitlesEnabled: boolean;
                             lastAttemptAt: string | null;
                             lastSuccessAt: string | null;
                             safeError: string | null;
@@ -11649,6 +11711,8 @@ export interface operations {
                                 staleAfterSeconds: 1800;
                                 /** @enum {number} */
                                 cooldownSeconds: 60;
+                                /** @enum {number} */
+                                manualCooldownSeconds: 3;
                                 /** @enum {number} */
                                 maxAttempts: 3;
                             };
@@ -11894,6 +11958,8 @@ export interface operations {
                         revision: number;
                         selectionRevision: number;
                         selectedCount: number;
+                        eventTitlesAuthorized: boolean;
+                        eventTitlesEnabled: boolean;
                         lastAttemptAt: string | null;
                         lastSuccessAt: string | null;
                         safeError: string | null;
@@ -11906,6 +11972,8 @@ export interface operations {
                             staleAfterSeconds: 1800;
                             /** @enum {number} */
                             cooldownSeconds: 60;
+                            /** @enum {number} */
+                            manualCooldownSeconds: 3;
                             /** @enum {number} */
                             maxAttempts: 3;
                         };
@@ -12134,6 +12202,10 @@ export interface operations {
                     /** Format: uuid */
                     periodId: string;
                     reason: "open" | "resume" | "manual" | "foreground";
+                    /** Format: date */
+                    weekStart?: string;
+                    /** @enum {boolean} */
+                    includeCurrentWeek?: true;
                 };
             };
         };
@@ -12389,6 +12461,8 @@ export interface operations {
                             revision: number;
                             selectionRevision: number;
                             selectedCount: number;
+                            eventTitlesAuthorized: boolean;
+                            eventTitlesEnabled: boolean;
                             lastAttemptAt: string | null;
                             lastSuccessAt: string | null;
                             safeError: string | null;
@@ -12401,6 +12475,8 @@ export interface operations {
                                 staleAfterSeconds: 1800;
                                 /** @enum {number} */
                                 cooldownSeconds: 60;
+                                /** @enum {number} */
+                                manualCooldownSeconds: 3;
                                 /** @enum {number} */
                                 maxAttempts: 3;
                             };
@@ -12424,6 +12500,500 @@ export interface operations {
                         }[];
                         issues: string[];
                         lastFetchedAt: string | null;
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    listCalendarEvents: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: date-time */
+                            startAt: string;
+                            /** Format: date-time */
+                            endAt: string;
+                            title: string;
+                            allDay: boolean;
+                            blocksTime: boolean;
+                        }[];
+                        partial: boolean;
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                            fieldErrors: {
+                                field: string;
+                                message: string;
+                            }[];
+                            requestId: string;
+                            retryable: boolean;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    setCalendarEventTitleVisibility: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Origen exacto configurado para el cliente web. */
+                Origin: string;
+                /** @description Token obtenido de la sesión, ligado a su cookie opaca. */
+                "X-CSRF-Token": string;
+                /** @description Clave de 1–128 caracteres alfanuméricos, : _ o -. Repetir la misma operación/cuerpo devuelve el resultado original; reutilizar con otros datos devuelve 409. */
+                "Idempotency-Key": string;
+                /** @description ETag vigente; 428 si falta y 412 si cambió. Aplicar una propuesta requiere el ETag workspace de su vista previa. */
+                "If-Match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    visible: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        configured: boolean;
+                        state: "not_connected" | "connected" | "stale" | "error" | "revoked" | "partial";
+                        revision: number;
+                        selectionRevision: number;
+                        selectedCount: number;
+                        eventTitlesAuthorized: boolean;
+                        eventTitlesEnabled: boolean;
+                        lastAttemptAt: string | null;
+                        lastSuccessAt: string | null;
+                        safeError: string | null;
+                        policy: {
+                            /** @enum {number} */
+                            chunkDays: 31;
+                            /** @enum {number} */
+                            foregroundRefreshSeconds: 900;
+                            /** @enum {number} */
+                            staleAfterSeconds: 1800;
+                            /** @enum {number} */
+                            cooldownSeconds: 60;
+                            /** @enum {number} */
+                            manualCooldownSeconds: 3;
+                            /** @enum {number} */
+                            maxAttempts: 3;
+                        };
                     };
                 };
             };
@@ -14114,6 +14684,14 @@ export interface operations {
                             studyMinutes: number;
                             groupMinutes: number;
                             unplacedMinutes: number | null;
+                            days: {
+                                /** Format: date */
+                                date: string;
+                                capacityMinutes: number | null;
+                                studyMinutes: number;
+                                groupMinutes: number;
+                                unplacedMinutes: number | null;
+                            }[];
                             incompleteActivityIds: string[];
                             state: "empty" | "viable" | "partial" | "deficit" | "conflict";
                         }[];

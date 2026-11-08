@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useApp } from "../state";
+import { AppearanceSettings } from "../components/AppearanceSettings";
 import { SCENARIOS } from "../demo";
 import { navigate } from "../navigation";
 import {
@@ -12,6 +13,48 @@ import {
 } from "../components/ui";
 import { formatMinutes } from "../rules";
 
+const FREE_FEATURES = [
+  [
+    "Organizar tus actividades",
+    "Importa PDF o Excel, revisa lo extraído y añade actividades manualmente.",
+  ],
+  [
+    "Planificar tu semana",
+    "Configura tu disponibilidad y prioridades, conecta Calendar de forma opcional y revisa las sesiones y los reajustes.",
+  ],
+  [
+    "Registrar tu dedicación",
+    "Indica el esfuerzo estimado y registra o corrige las horas que realmente dedicaste.",
+  ],
+];
+
+const PREMIUM_FEATURES = [
+  {
+    title: "Estimar desde el enunciado",
+    summary: "Obtén un rango de tiempo para la actividad.",
+    detail:
+      "La IA usa el fragmento del enunciado que revisas y autorizas. Si el contexto es insuficiente, puedes completarlo o indicar las horas manualmente.",
+  },
+  {
+    title: "Entender la sugerencia",
+    summary: "Consulta qué factores influyeron en el rango.",
+    detail:
+      "Puedes revisar los factores detectados en el enunciado y el origen del rango que ves, ya sea general o ajustado con tu historial.",
+  },
+  {
+    title: "Ajustar con tu historial",
+    summary: "Usa tus horas reales para afinar la estimación.",
+    detail:
+      "Con tu permiso, el rango se puede ajustar desde una actividad individual comparable que ya terminaste. Se compara por curso, tipo y tamaño. Con una o dos comparables se indica cuántas respaldan el ajuste. A partir de tres, el aviso desaparece.",
+  },
+  {
+    title: "Aceptar o corregir la estimación",
+    summary: "Tú eliges cuánto tiempo usar en tu plan.",
+    detail:
+      "Puedes elegir un tiempo del rango o corregirlo. El esfuerzo cambia cuando lo confirmas. Si afecta las sesiones, revisas la propuesta de reajuste por separado.",
+  },
+];
+
 export default function Settings({
   onIntegration,
   onConflict,
@@ -21,6 +64,7 @@ export default function Settings({
 }) {
   const { workspace, save, logout, scenario } = useApp();
   const w = workspace!;
+  const premium = w.plan === "Premium";
   const [scenarioId, setScenarioId] = useState("");
   const [remove, setRemove] = useState<string | null>(null);
   return (
@@ -46,10 +90,9 @@ export default function Settings({
                 {w.plan} · perfil ficticio
               </Badge>
             </div>
-            <Notice title="Guardado solo en este navegador">
-              No hay autenticación, backend ni sincronización real entre
-              dispositivos. El cierre de sesión oculta la información del perfil
-              en la interfaz; no es un sistema de seguridad real.
+            <Notice title="Perfil de demostración">
+              Los cambios de la demostración se guardan en este navegador. Usa
+              datos ficticios para explorar la interfaz.
             </Notice>
             <div className="form-actions">
               <Button
@@ -63,6 +106,7 @@ export default function Settings({
               </Button>
             </div>
           </section>
+          <AppearanceSettings />
           <section className="surface">
             <h2>Preferencias de planificación</h2>
             <div className="settings-link-list">
@@ -98,92 +142,103 @@ export default function Settings({
               </button>
             </div>
           </section>
-          <section className="surface" id="planes">
-            <div className="row-between">
-              <h2>Free y Premium</h2>
+          <section
+            className="surface plan-settings"
+            id="planes"
+            aria-labelledby="plans-title"
+          >
+            <div className="plan-settings-header">
+              <h2 id="plans-title">Free y Premium</h2>
               <Badge tone="neutral">Demostración sin pagos</Badge>
             </div>
-            <p className="muted">
-              El núcleo de planificación está disponible en ambos planes.
-            </p>
-            <div className="plan-switch segmented">
+            <div
+              className="plan-switch segmented"
+              role="group"
+              aria-label="Elegir plan de demostración"
+            >
               <button
-                className={w.plan === "Free" ? "active" : ""}
+                type="button"
+                className={!premium ? "active" : ""}
+                aria-pressed={!premium}
                 onClick={() => save({ ...w, plan: "Free" })}
               >
                 Demostrar Free
               </button>
               <button
-                className={w.plan === "Premium" ? "active" : ""}
+                type="button"
+                className={premium ? "active" : ""}
+                aria-pressed={premium}
                 onClick={() => save({ ...w, plan: "Premium" })}
               >
                 Demostrar Premium
               </button>
             </div>
-            <div className="plan-comparison">
-              <div>
-                <Icon name="check" />
-                <span>Importar PDF/Excel, corregir e ingresar horas</span>
-                <strong>Ambos</strong>
+            {premium ? (
+              <div className="plan-benefits">
+                <div>
+                  <h3>Estimaciones con IA</h3>
+                  <p className="muted">
+                    Premium incluye todo Free y añade estas opciones de
+                    estimación.
+                  </p>
+                </div>
+                <div className="premium-features">
+                  {PREMIUM_FEATURES.map(({ title, summary, detail }) => (
+                    <details key={title} name="premium-benefit">
+                      <summary>
+                        <span>
+                          <strong>{title}</strong>
+                          <small>{summary}</small>
+                        </span>
+                        <Icon name="chevron" size={16} />
+                      </summary>
+                      <p>{detail}</p>
+                    </details>
+                  ))}
+                </div>
+                <div className="plan-history-preference">
+                  <label className="check-field">
+                    <input
+                      type="checkbox"
+                      checked={w.historyConsent}
+                      onChange={(e) =>
+                        save({ ...w, historyConsent: e.target.checked })
+                      }
+                    />
+                    Permitir el uso de mi historial ficticio para probar
+                    sugerencias personalizadas
+                  </label>
+                  <small className="muted">
+                    {w.personalEligible && w.historyConsent
+                      ? "Este escenario puede mostrar una sugerencia personalizada de ejemplo."
+                      : "En este estado, la demostración usa sugerencias generales."}
+                  </small>
+                </div>
+                <p className="tiny muted">
+                  Al volver a Free se conservan tus actividades, sesiones, horas
+                  e historial.
+                </p>
               </div>
-              <div>
-                <Icon name="check" />
-                <span>Prioridades, calendario, sesiones y reajustes</span>
-                <strong>Ambos</strong>
+            ) : (
+              <div className="plan-benefits">
+                <div>
+                  <h3>Planificación y seguimiento</h3>
+                  <p className="muted">
+                    Organiza tu carga y lleva un registro de tu progreso.
+                  </p>
+                </div>
+                <ul className="free-features">
+                  {FREE_FEATURES.map(([title, detail]) => (
+                    <li key={title}>
+                      <Icon name="check" size={16} />
+                      <span>
+                        <strong>{title}</strong>
+                        <small>{detail}</small>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div>
-                <Icon name="check" />
-                <span>Registrar y corregir dedicación real</span>
-                <strong>Ambos</strong>
-              </div>
-              <div>
-                <Icon name="spark" />
-                <span>Sugerencia orientativa desde el enunciado</span>
-                <strong>Premium</strong>
-              </div>
-              <div>
-                <Icon name="spark" />
-                <span>Personalización con historial elegible</span>
-                <strong>Premium</strong>
-              </div>
-            </div>
-            <p className="tiny muted">
-              Al pasar a Free se conservan actividades, sesiones, horas
-              operativas e historial. No hay precios, cuotas ni condiciones
-              comerciales aprobadas.
-            </p>
-            <label className="check-field">
-              <input
-                type="checkbox"
-                checked={w.historyConsent}
-                onChange={(e) =>
-                  save({ ...w, historyConsent: e.target.checked })
-                }
-              />
-              Permito usar el historial ficticio para mostrar una sugerencia
-              personalizada de ejemplo
-            </label>
-            <label className="check-field">
-              <input
-                type="checkbox"
-                checked={w.premiumUnavailable}
-                onChange={(e) =>
-                  save({ ...w, premiumUnavailable: e.target.checked })
-                }
-              />
-              Simular sugerencias Premium no disponibles
-            </label>
-            {w.plan === "Premium" && (
-              <Notice
-                title={
-                  w.personalEligible
-                    ? "Este escenario representa historial comparable suficiente"
-                    : "Este perfil todavía usa sugerencias generales"
-                }
-              >
-                La elegibilidad es un dato explícito del escenario, no un umbral
-                de producto inventado. No se consulta IA.
-              </Notice>
             )}
           </section>
           <section className="surface">
@@ -258,8 +313,8 @@ export default function Settings({
           <section className="surface">
             <h2>Ayuda y privacidad</h2>
             <p>
-              Usa datos ficticios. Todo se guarda localmente en este navegador;
-              no hay subida de documentos, correo, OAuth, IA ni pagos.
+              En la demostración los documentos, el correo, Calendar y las
+              sugerencias de IA se muestran con ejemplos.
             </p>
             <p className="muted">
               Retención, exportación y eliminación de cuenta reales requieren
@@ -297,6 +352,18 @@ export default function Settings({
             <Button className="full" onClick={onConflict}>
               Simular conflicto entre versiones
             </Button>
+            {premium && (
+              <label className="check-field">
+                <input
+                  type="checkbox"
+                  checked={w.premiumUnavailable}
+                  onChange={(e) =>
+                    save({ ...w, premiumUnavailable: e.target.checked })
+                  }
+                />
+                Simular sugerencias Premium no disponibles
+              </label>
+            )}
           </section>
         </aside>
       </div>

@@ -117,6 +117,10 @@ test("F4 plans beyond five weeks, applies dates once, and revalidates automatic 
     assert.equal(weekly.statusCode, 200, weekly.body);
     assert.equal(weekly.json().weeks[0].deadlineActivityIds.length, 0);
     assert.equal(weekly.json().weeks[0].studyMinutes, 120);
+    assert.equal(
+      weekly.json().weeks[0].days.reduce((total: number, day: { studyMinutes: number }) => total + day.studyMinutes, 0),
+      120,
+    );
     assert.equal(weekly.json().weeks[0].state, "viable");
 
     const dateProposal = await f.request(

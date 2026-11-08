@@ -44,7 +44,7 @@ summary:focus-visible,
 [tabindex]:focus-visible {
   outline: 3px solid var(--primary);
   outline-offset: 3px;
-  box-shadow: 0 0 0 2px #fff;
+  box-shadow: 0 0 0 2px var(--surface);
 }
 h1,
 h2,
@@ -120,7 +120,7 @@ strong {
   border: 1px solid var(--control-border);
   border-radius: var(--radius-md);
   color: var(--primary);
-  background: #fff;
+  background: var(--surface);
   font-size: 14px;
   line-height: 24px;
   font-weight: 600;
@@ -134,7 +134,7 @@ strong {
   text-decoration: none;
 }
 .button.primary {
-  color: #fff;
+  color: var(--on-primary);
   background: var(--primary);
   border-color: var(--primary);
 }
@@ -259,7 +259,7 @@ strong {
 .notice .button {
   color: inherit;
   border-color: currentColor;
-  background: #fff;
+  background: var(--surface);
 }
 .field {
   display: flex;
@@ -283,7 +283,7 @@ textarea {
   padding: 10px 12px;
   border: 1px solid var(--control-border);
   border-radius: var(--radius-md);
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   font-size: 16px;
   line-height: 24px;
@@ -376,7 +376,7 @@ textarea {
   font-weight: 500;
 }
 .segmented button.active {
-  background: #fff;
+  background: var(--surface);
   color: var(--primary);
   border-color: var(--border);
   box-shadow: var(--shadow-sm);
@@ -399,7 +399,7 @@ textarea {
   width: 232px;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--surface);
   border-right: 1px solid var(--border);
   padding: 30px 16px 18px;
   z-index: 20;
@@ -423,7 +423,7 @@ textarea {
 }
 .brand-mark {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   display: flex;
   width: 34px;
   height: 36px;
@@ -540,7 +540,7 @@ textarea {
   justify-content: space-between;
   padding: 16px 40px;
   border-bottom: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
 }
 .breadcrumb {
   display: flex;
@@ -586,7 +586,7 @@ textarea {
   position: absolute;
   right: 0;
   top: 56px;
-  background: #fff;
+  background: var(--surface);
   padding: 8px;
   box-shadow: var(--shadow-panel);
   border: 1px solid var(--border);
@@ -616,7 +616,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f0f3f8;
+  background: var(--subtle);
   color: var(--secondary);
   font-size: 14px;
   border-bottom: 1px solid var(--border);
@@ -667,7 +667,7 @@ textarea {
   padding: 24px;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  background: #fff;
+  background: var(--surface);
   margin-bottom: 24px;
 }
 .guide-icon {
@@ -710,7 +710,7 @@ textarea {
   margin-bottom: 28px;
 }
 .stat-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -807,7 +807,7 @@ textarea {
   margin-bottom: 16px;
 }
 .week-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-sm);
@@ -1047,7 +1047,7 @@ textarea {
 }
 .week-card-footer {
   padding: 12px 24px;
-  background: #fcfcfc;
+  background: var(--canvas);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -1076,7 +1076,7 @@ textarea {
   padding-top: 42px;
 }
 .aside-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: 24px;
@@ -1142,7 +1142,7 @@ textarea {
   border-radius: var(--radius-xl);
   padding: 24px;
   margin-top: 24px;
-  background: #fff;
+  background: var(--surface);
 }
 .import-footer > div {
   display: flex;
@@ -1174,7 +1174,7 @@ textarea {
   top: -100px;
   left: 20px;
   z-index: 99;
-  background: #fff;
+  background: var(--surface);
   border: 2px solid var(--primary);
   border-radius: 8px;
   padding: 12px;
@@ -1227,7 +1227,7 @@ textarea {
   display: grid;
   grid-template-columns: 1.05fr 1fr;
   min-height: 100vh;
-  background: #fff;
+  background: var(--surface);
 }
 .access-story {
   display: flex;
@@ -1259,7 +1259,7 @@ textarea {
 }
 .story-week {
   margin-top: 40px;
-  background: #fff;
+  background: var(--surface);
   padding: 24px;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
@@ -1435,8 +1435,8 @@ textarea {
 .legend-occupied {
   background: repeating-linear-gradient(
     45deg,
-    #fff,
-    #fff 2px,
+    var(--surface),
+    var(--surface) 2px,
     var(--border) 2px,
     var(--border) 4px
   );
@@ -1466,7 +1466,7 @@ textarea {
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: #fff;
+  background: var(--surface);
 }
 .calendar-days {
   display: grid;
@@ -1475,7 +1475,7 @@ textarea {
   min-height: 96px;
   position: sticky;
   top: 0;
-  background: #fff;
+  background: var(--surface);
   z-index: 5;
 }
 .calendar-days > div {
@@ -1504,7 +1504,7 @@ textarea {
 }
 .calendar-days > div.today > strong {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   border-radius: 10px;
 }
 .deadline-marker {
@@ -1530,7 +1530,7 @@ textarea {
   left: 7px;
   font-size: 14px;
   color: var(--secondary);
-  background: #fff;
+  background: var(--surface);
   transform: translateY(3px);
 }
 .day-column {
@@ -1591,10 +1591,10 @@ textarea {
 .calendar-block.external {
   background: repeating-linear-gradient(
     135deg,
-    #f1f5f9,
-    #f1f5f9 6px,
-    #fff 6px,
-    #fff 8px
+    var(--subtle),
+    var(--subtle) 6px,
+    var(--surface) 6px,
+    var(--surface) 8px
   );
 }
 .calendar-block.study {
@@ -1604,7 +1604,7 @@ textarea {
   border-left-width: 3px;
 }
 .calendar-block.study:hover {
-  background: #fff;
+  background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
 .calendar-block.group-block {
@@ -1725,7 +1725,7 @@ textarea {
 }
 /* Activity panel */
 .activity-panel {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   overflow: hidden;
@@ -1880,7 +1880,7 @@ summary {
   width: 30px;
   height: 30px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 50%;
   display: flex;
   justify-content: center;
@@ -1894,7 +1894,7 @@ summary {
 .import-steps > .current i {
   background: var(--primary);
   border-color: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
 }
 .import-steps > .done i {
   color: var(--success-text);
@@ -1911,7 +1911,7 @@ summary {
   align-items: center;
   gap: 20px;
   padding: 28px;
-  background: #fff;
+  background: var(--surface);
   border: 1px dashed var(--control-border);
   border-radius: var(--radius-xl);
   margin-bottom: 16px;
@@ -1985,7 +1985,7 @@ summary {
 .review-table {
   border: 1px solid var(--border);
   border-top: 0;
-  background: #fff;
+  background: var(--surface);
   border-radius: 0 0 12px 12px;
   overflow: hidden;
 }
@@ -2070,7 +2070,7 @@ summary {
   padding: 20px;
   border: 1px solid var(--warning-text);
   border-radius: var(--radius-lg);
-  background: #fff;
+  background: var(--surface);
   margin-top: 20px;
 }
 .loading-block {
@@ -2079,7 +2079,7 @@ summary {
   align-items: center;
   gap: 12px;
   justify-content: center;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
 }
@@ -2318,7 +2318,7 @@ summary {
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-modal);
   color: var(--text);
-  background: #fff;
+  background: var(--surface);
 }
 .modal.wide {
   width: min(960px, calc(100% - 32px));
@@ -2334,7 +2334,7 @@ summary {
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  background: #fff;
+  background: var(--surface);
   z-index: 5;
 }
 .modal-header > div {
@@ -2496,7 +2496,7 @@ summary {
   color: var(--info-text);
 }
 .button.secondary:hover {
-  background: #e1e9f8;
+  background: var(--info-bg);
 }
 .brand {
   padding-inline: 8px;
@@ -2617,7 +2617,7 @@ summary {
   box-shadow: var(--shadow-sm);
 }
 .aside-card.source-card {
-  background: #f0f3f8;
+  background: var(--subtle);
 }
 .calendar-toolbar {
   padding: 16px;
@@ -2636,7 +2636,7 @@ summary {
   padding-block: 16px 12px;
 }
 .calendar-days > div.today {
-  background: #f7f9fd;
+  background: var(--info-bg);
 }
 .calendar-days > div > strong {
   width: 38px;
@@ -2651,14 +2651,14 @@ summary {
 .calendar-block.external {
   background: repeating-linear-gradient(
     135deg,
-    #f0f2f5,
-    #f0f2f5 6px,
-    #f7f8fa 6px,
-    #f7f8fa 8px
+    var(--subtle),
+    var(--subtle) 6px,
+    var(--canvas) 6px,
+    var(--canvas) 8px
   );
 }
 .calendar-block.study {
-  border-color: #9aafd1;
+  border-color: var(--control-border);
   border-left-color: var(--primary);
 }
 .calendar-block.group-block {
@@ -2691,7 +2691,7 @@ summary {
   border-radius: 5px;
 }
 .agenda-entry.available {
-  background: #f0f5f1;
+  background: var(--success-bg);
 }
 .agenda-entry.available .agenda-kind {
   color: var(--success-text);
@@ -2702,7 +2702,7 @@ summary {
 }
 .agenda-entry.group .agenda-kind {
   color: var(--warning-text);
-  background: #fff;
+  background: var(--surface);
 }
 .agenda-deadline {
   background: var(--info-bg);
@@ -3178,7 +3178,7 @@ summary {
     right: 0;
     padding: 6px 16px calc(6px + env(safe-area-inset-bottom));
     justify-content: space-around;
-    background: #fff;
+    background: var(--surface);
     border-top: 1px solid var(--border);
     z-index: 25;
     min-height: 72px;
@@ -3882,7 +3882,7 @@ summary {
   }
   .review-row > .field:nth-child(5) input,
   .review-row > .field:nth-child(6) select {
-    background: #fff;
+    background: var(--surface);
   }
   .review-row > .field:nth-child(5) input {
     font-size: 22px;

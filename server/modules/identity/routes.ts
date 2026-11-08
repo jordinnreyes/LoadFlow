@@ -7,6 +7,7 @@ import {
   strict,
 } from "../../../packages/contracts/index.js";
 import { Profile } from "../../../packages/contracts/academics.js";
+import { DomainError } from "../../errors.js";
 import { Identity, SESSION_COOKIE, OAUTH_COOKIE } from "./service.js";
 const SessionResponse = Type.Object(
   {
@@ -177,13 +178,18 @@ export async function identityRoutes(
       },
     },
     async (request, reply) => {
-      const identity = getIdentity();
-      const result = await identity.googleStart(request.query.prompt);
-      reply.setCookie(OAUTH_COOKIE, result.state, {
-        ...cookieOptions,
-        maxAge: 600,
-      });
-      return reply.redirect(result.url);
+      try {
+        const result = await getIdentity().googleStart(request.query.prompt);
+        reply.setCookie(OAUTH_COOKIE, result.state, {
+          ...cookieOptions,
+          maxAge: 600,
+        });
+        return reply.redirect(result.url);
+      } catch (error) {
+        if (browserNavigation(request) && error instanceof DomainError)
+          return reply.redirect(new URL("/#/acceso?google=unavailable", getIdentity().config.origin).toString(), 303);
+        throw error;
+      }
     },
   );
   app.get<{
@@ -207,23 +213,33 @@ export async function identityRoutes(
           },
           strict,
         ),
-        response: { 200: SessionResponse, ...errors },
+        response: { 200: SessionResponse, 303: Type.Null(), ...errors },
       },
     },
     async (request, reply) => {
       const identity = getIdentity();
       reply.clearCookie(OAUTH_COOKIE, cookieOptions);
-      const result = await identity.googleCallback(
-        request.cookies[OAUTH_COOKIE],
-        request.query.error ? undefined : request.query.code,
-      );
-      // Until F6 connects the web client, finish at the API with the same
-      // verified-session contract as OTP instead of redirecting to an absent UI.
-      return issue(reply, result);
+      try {
+        const result = await identity.googleCallback(
+          request.cookies[OAUTH_COOKIE],
+          request.query.error ? undefined : request.query.code,
+        );
+        const session = issue(reply, result);
+        if (browserNavigation(request)) return reply.redirect(new URL("/#/tablero", identity.config.origin).toString(), 303);
+        return session;
+      } catch (error) {
+        if (browserNavigation(request) && error instanceof DomainError)
+          return reply.redirect(new URL("/#/acceso?google=failed", identity.config.origin).toString(), 303);
+        throw error;
+      }
     },
   );
 }
 export function header(request: FastifyRequest, name: string) {
   const value = request.headers[name];
   return typeof value === "string" ? value : undefined;
+}
+
+export function browserNavigation(request: FastifyRequest) {
+  return header(request, "accept")?.split(",").some((part) => part.trim().split(";")[0] === "text/html") ?? false;
 }

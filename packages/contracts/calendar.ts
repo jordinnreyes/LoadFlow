@@ -1,5 +1,5 @@
 import { Type, type Static } from "@sinclair/typebox";
-import { Id, strict } from "./index.js";
+import { CivilDate, Id, strict } from "./index.js";
 import { Instant, InstantInterval } from "./availability.js";
 export const Authorization = Type.Object(
   { authorizationUrl: Type.String({ format: "uri" }), expiresAt: Instant },
@@ -21,6 +21,8 @@ export const Connection = Type.Object(
     revision: Type.Integer({ minimum: 0 }),
     selectionRevision: Type.Integer({ minimum: 0 }),
     selectedCount: Type.Integer({ minimum: 0 }),
+    eventTitlesAuthorized: Type.Boolean(),
+    eventTitlesEnabled: Type.Boolean(),
     lastAttemptAt: Type.Union([Instant, Type.Null()]),
     lastSuccessAt: Type.Union([Instant, Type.Null()]),
     safeError: Type.Union([Type.String(), Type.Null()]),
@@ -30,6 +32,7 @@ export const Connection = Type.Object(
         foregroundRefreshSeconds: Type.Literal(900),
         staleAfterSeconds: Type.Literal(1800),
         cooldownSeconds: Type.Literal(60),
+        manualCooldownSeconds: Type.Literal(3),
         maxAttempts: Type.Literal(3),
       },
       strict,
@@ -58,9 +61,12 @@ export const Refresh = Type.Object(
     reason: Type.Union(
       ["open", "resume", "manual", "foreground"].map((x) => Type.Literal(x)),
     ),
+    weekStart: Type.Optional(CivilDate),
+    includeCurrentWeek: Type.Optional(Type.Literal(true)),
   },
   strict,
 );
+export type RefreshInput = Static<typeof Refresh>;
 export const Job = Type.Object(
   {
     id: Id,
@@ -82,6 +88,29 @@ export const JobAccepted = Type.Object(
   strict,
 );
 export const BusyQuery = Type.Object({ from: Instant, to: Instant }, strict);
+export const EventTitleVisibility = Type.Object(
+  { visible: Type.Boolean() },
+  strict,
+);
+export const Events = Type.Object(
+  {
+    items: Type.Array(
+      Type.Object(
+        {
+          startAt: Instant,
+          endAt: Instant,
+          title: Type.String({ minLength: 1, maxLength: 300 }),
+          allDay: Type.Boolean(),
+          blocksTime: Type.Boolean(),
+        },
+        strict,
+      ),
+    ),
+    partial: Type.Boolean(),
+  },
+  strict,
+);
+export type EventsDto = Static<typeof Events>;
 export const Busy = Type.Object(
   {
     connection: Connection,

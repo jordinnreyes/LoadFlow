@@ -7,7 +7,8 @@ import {
 } from "../../../packages/contracts/index.js";
 import * as C from "../../../packages/contracts/calendar.js";
 import { SESSION_COOKIE, type Identity } from "../identity/service.js";
-import { header } from "../identity/routes.js";
+import { browserNavigation, header } from "../identity/routes.js";
+import { DomainError } from "../../errors.js";
 import { CalendarService, CALENDAR_COOKIE } from "./service.js";
 export async function calendarRoutes(
   app: FastifyInstance,
@@ -41,19 +42,29 @@ export async function calendarRoutes(
       schema: {
         operationId: "authorizeCalendar",
         security,
+        querystring: Type.Object(
+          { eventTitles: Type.Optional(Type.Literal("true")) },
+          strict,
+        ),
         response: { 200: C.Authorization, ...errors },
       },
     },
     async (r, reply) => {
       const session = await auth(r, true);
-      const result = await getCalendar().authorize(session);
-      reply.setCookie(CALENDAR_COOKIE, result.browser, {
-        secure: true,
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 600,
-      });
+      const titles =
+        (r.query as { eventTitles?: "true" }).eventTitles === "true";
+      const result = await getCalendar().authorize(session, titles);
+      reply.setCookie(
+        CALENDAR_COOKIE,
+        titles ? `titles.${result.browser}` : result.browser,
+        {
+          secure: true,
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          maxAge: 600,
+        },
+      );
       return result.data;
     },
   );
@@ -74,17 +85,39 @@ export async function calendarRoutes(
           },
           { additionalProperties: true },
         ),
-        response: { 200: C.Connection, ...errors },
+        response: { 200: C.Connection, 303: Type.Null(), ...errors },
       },
     },
     async (r, reply) => {
-      const session = await auth(r);
+      const browser = r.cookies[CALENDAR_COOKIE];
+      const titles = browser?.startsWith("titles.");
+      const destination = titles ? "/#/calendario" : "/#/disponibilidad";
       try {
-        return await getCalendar().callback(
+        const session = await auth(r);
+        const connection = await getCalendar().callback(
           session,
-          r.cookies[CALENDAR_COOKIE],
+          titles ? browser?.slice("titles.".length) : browser,
           r.query as { state?: string; code?: string; error?: string },
         );
+        if (browserNavigation(r))
+          return reply.redirect(
+            new URL(
+              `${destination}?calendar=connected`,
+              getIdentity().config.origin,
+            ).toString(),
+            303,
+          );
+        return connection;
+      } catch (error) {
+        if (browserNavigation(r) && error instanceof DomainError)
+          return reply.redirect(
+            new URL(
+              `${destination}?calendar=failed`,
+              getIdentity().config.origin,
+            ).toString(),
+            303,
+          );
+        throw error;
       } finally {
         reply.clearCookie(CALENDAR_COOKIE, {
           secure: true,
@@ -168,7 +201,7 @@ export async function calendarRoutes(
         result = await getCalendar().refresh(
           s.ownerId,
           header(r, "idempotency-key"),
-          r.body as { periodId: string; reason: string },
+          r.body as C.RefreshInput,
         );
       return reply.code(result.status).send(result.data);
     },
@@ -219,6 +252,42 @@ export async function calendarRoutes(
       const s = await auth(r),
         q = r.query as { from: string; to: string };
       return getCalendar().getBusy(s.ownerId, q.from, q.to);
+    },
+  );
+  app.get(
+    "/api/v1/calendar/events",
+    {
+      schema: {
+        operationId: "listCalendarEvents",
+        security,
+        querystring: C.BusyQuery,
+        response: { 200: C.Events, ...errors },
+      },
+    },
+    async (r) => {
+      const s = await auth(r);
+      const q = r.query as { from: string; to: string };
+      return getCalendar().events(s.ownerId, q.from, q.to);
+    },
+  );
+  app.put(
+    "/api/v1/calendar/event-titles",
+    {
+      schema: {
+        operationId: "setCalendarEventTitleVisibility",
+        security,
+        body: C.EventTitleVisibility,
+        response: { 200: C.Connection, ...errors },
+      },
+    },
+    async (r) => {
+      const s = await auth(r, true);
+      const result = await getCalendar().setEventTitleVisibility(
+        s.ownerId,
+        header(r, "idempotency-key"),
+        (r.body as { visible: boolean }).visible,
+      );
+      return result.data;
     },
   );
   app.get(

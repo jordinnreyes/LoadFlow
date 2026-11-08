@@ -44,6 +44,7 @@ const identity = new Identity(
   academics,
   {
     origin: config.origin,
+    googleCallbackOrigin: config.oauthCallbackOrigin,
     encryptionKey: process.env.CREDENTIAL_ENCRYPTION_KEY!,
     googleEnabled: process.env.GOOGLE_AUTH_ENABLED === "true",
   },
@@ -56,7 +57,7 @@ const calendar = new CalendarService(
         clientSecret: process.env.CALENDAR_CLIENT_SECRET,
         callback: new URL(
           "/api/v1/calendar/callback",
-          config.origin,
+          config.oauthCallbackOrigin,
         ).toString(),
       })
     : undefined,

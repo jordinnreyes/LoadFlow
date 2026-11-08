@@ -6,7 +6,25 @@ Continuación F4 en [planificación, propuestas y sesiones](./F4-DEVELOPMENT.md)
 
 Importación local habilitada con originales temporales: [política, requisitos y verificación F3](./F3-DEVELOPMENT.md). Requiere Docker, la imagen del parser fijada y Storage privado; el servidor no descarga imágenes ni utiliza un parser alternativo sin aislamiento.
 
-Stack y gates: ARCHITECTURE.md / PLAN.md. La UI de `src/` conserva su modo demo; integrar API es F6. No se inicia producción ni se crean servicios cloud con estos pasos.
+Stack y gates: ARCHITECTURE.md / PLAN.md. La ruta base usa la sesión y los datos de la cuenta conectada.
+
+## Primer recorrido conectado de F6
+
+En una terminal con la pila local configurada, arranca la API con el origen exacto de la web. Vite reenvía `/api/v1` a Fastify en loopback sin cambiar `Origin`.
+
+```powershell
+$env:PUBLIC_APP_ORIGIN = 'http://127.0.0.1:5173'
+$env:OAUTH_CALLBACK_ORIGIN = 'http://127.0.0.1:3001'
+& ./scripts/dev.ps1 run dev:api
+```
+
+En otra terminal ejecuta `& ./scripts/dev.ps1 run dev` y abre `http://127.0.0.1:5173/`. Usa correo sintético y consulta el código en Mailpit local. Una cuenta nueva tiene un periodo inicial vacío. La web conectada ofrece tablero, calendario, actividades y progreso, cursos y prioridades, disponibilidad, Calendar, importaciones y propuestas de planificación. Configura zona, periodo y disponibilidad antes de comprobar la distribución de sesiones. El tema es una preferencia del navegador.
+
+Para la revisión manual OAuth, usa **Continuar con Google** en la web local. Tras volver al tablero, abre **Disponibilidad y Calendar** y pulsa **Conectar Google Calendar**. Google solicita lista de calendarios, ocupación y lectura de eventos en el mismo consentimiento. Al volver, elige un calendario de prueba, confirma la zona si falta y pulsa **Guardar y sincronizar**. En **Calendario**, comprueba los bloques de ocupación, la cuadrícula de 24 horas en Semana y el control **Mostrar/Ocultar títulos**. Las consultas manuales se encolan con un mínimo de 3 s tras el trabajo anterior. Los callbacks llegan al puerto 3001 y redirigen al origen web de confianza en 5173. Si no hay un cliente OAuth configurado, el acceso por correo y la disponibilidad manual siguen disponibles.
+
+`npm run test:e2e:real` usa la pila local, dos contextos Chromium del mismo propietario y otro propietario sintético. Verifica la lectura tras persistencia y el rechazo de una escritura con revisión anterior. El flujo completo de OAuth con el proveedor requiere una cuenta autorizada y la prueba interactiva.
+
+La demostración web se abre explícitamente con `/?modo=demo` en Vite de desarrollo. El build web normal excluye los escenarios de ejemplo. El spike Android empaqueta la demo en `spikes/android-capacitor/www` y comparte tema y estilos con React. La integración de la cuenta real y Calendar dentro del APK requiere el recorrido AM-01 del PLAN.
 
 ## Entorno y comandos
 
@@ -85,7 +103,7 @@ No hay eliminación destructiva de cuentas/actividades ni sesiones de estudio pe
 
 El reloj y proveedor de las pruebas de concurrencia/OAuth son dobles explícitos; no prueban Google real. Otra prueba usa el SDK real para generar URL y PKCE, sin abrir Google ni autenticar a nadie. Google está deshabilitado por defecto; se activa con `GOOGLE_AUTH_ENABLED=true` y proveedor Google en Supabase local usando credenciales **de desarrollo** desde `.env`, redirects exactos y cuenta autorizada. El promotor configuró su entorno y confirmó personalmente ingreso, logout, reingreso y cancelación de Google real; tras cancelar reportó `SESSION_REQUIRED`. Es evidencia manual web local, no Android ni piloto. Los scopes de identidad son independientes de Calendar; no existe integración Calendar en F1. No pegar secretos por chat ni versionar configuración con ellos.
 
-El callback `/api/v1/auth/google/callback` termina en **200 JSON de sesión**, como OTP, con cookie privada y sin tokens del proveedor. Hasta F6 no redirige al tablero: Fastify no sirve `/#/tablero` y hacerlo causaba un 404 pese a que el acceso había terminado bien. El tablero de 5173 sigue en modo demo. Para comprobar sesión después del ingreso usar `/api/v1/auth/session` en el mismo navegador. No recargar una URL de callback ya consumida: iniciar un nuevo flujo si se necesita repetir. La prueba dirigida HTTP de callback valida respuesta 200, ausencia de redirección, cookie funcional, no exposición de tokens y replay rechazado; usa el proveedor doble explícito.
+El callback `/api/v1/auth/google/callback` devuelve **200 JSON de sesión** a clientes de API. En navegación HTML emite la cookie privada y vuelve al tablero del origen configurado. Calendar devuelve su estado en JSON y vuelve a Disponibilidad desde navegador. Para comprobar sesión después del ingreso usa `/api/v1/auth/session` en el mismo navegador. Inicia un nuevo flujo para repetir un callback consumido.
 
 Para probar rechazo con una cuenta Google ya autorizada usar `/api/v1/auth/google/start?prompt=consent` después de logout: fuerza una nueva pantalla de consentimiento mediante el parámetro oficial del proveedor. Solo se admite ese valor; el enlace normal conserva su comportamiento anterior. Logout de CargaWise no cierra la cuenta Google del navegador. Callback acepta error/error_code/error_description limitados, no refleja sus textos, consume la transacción y devuelve 401 sin emitir una sesión en cancelación. Google Android queda para AM-01.
 

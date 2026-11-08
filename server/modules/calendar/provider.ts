@@ -1,13 +1,18 @@
 import { createHash } from "node:crypto";
+import { Temporal } from "@js-temporal/polyfill";
+import type { EventsDto } from "../../../packages/contracts/calendar.js";
 export const SCOPES = [
   "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
   "https://www.googleapis.com/auth/calendar.events.freebusy",
 ] as const;
+export const EVENT_TITLES_SCOPE =
+  "https://www.googleapis.com/auth/calendar.events.readonly";
 export const CALENDAR_POLICY = {
   chunkDays: 31,
   foregroundRefreshSeconds: 900,
   staleAfterSeconds: 1800,
   cooldownSeconds: 60,
+  manualCooldownSeconds: 3,
   maxAttempts: 3,
 } as const;
 export type Token = {
@@ -27,6 +32,27 @@ export type BusyResult = {
   busy: { startAt: string; endAt: string }[];
   error?: string;
 };
+type EventBoundary = { date?: string; dateTime?: string; timeZone?: string };
+
+function eventInstant(
+  value: EventBoundary | undefined,
+  calendarZone: string | null,
+) {
+  const zone = value?.timeZone ?? calendarZone;
+  if (value?.date && zone)
+    return Temporal.PlainDate.from(value.date)
+      .toZonedDateTime(zone)
+      .toInstant();
+  const dateTime = value?.dateTime ?? "";
+  try {
+    return Temporal.Instant.from(dateTime);
+  } catch (error) {
+    if (!zone) throw error;
+    return Temporal.PlainDateTime.from(dateTime)
+      .toZonedDateTime(zone)
+      .toInstant();
+  }
+}
 export class CalendarFailure extends Error {
   constructor(
     readonly code: string,
@@ -43,6 +69,13 @@ export interface CalendarProvider {
   refresh(token: Token): Promise<Token>;
   revoke(token: Token): Promise<void>;
   calendars(token: Token): Promise<CalendarInfo[]>;
+  events(
+    token: Token,
+    source: { providerId: string; timezone: string | null },
+    from: string,
+    to: string,
+    signal: AbortSignal,
+  ): Promise<EventsDto>;
   busy(
     token: Token,
     ids: string[],
@@ -58,6 +91,7 @@ export function granted(scopes: string[]) {
     scopes.every(
       (s) =>
         SCOPES.includes(s as (typeof SCOPES)[number]) ||
+        s === EVENT_TITLES_SCOPE ||
         [
           "openid",
           "email",
@@ -91,7 +125,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
       client_id: this.config.clientId,
       redirect_uri: this.config.callback,
       response_type: "code",
-      scope: SCOPES.join(" "),
+      scope: [...SCOPES, EVENT_TITLES_SCOPE].join(" "),
       state,
       access_type: "offline",
       prompt: "consent",
@@ -107,7 +141,9 @@ export class GoogleCalendarProvider implements CalendarProvider {
       response = await this.request(url, {
         ...init,
         redirect: "error",
-        signal: AbortSignal.timeout(15000),
+        signal: init.signal
+          ? AbortSignal.any([init.signal, AbortSignal.timeout(15000)])
+          : AbortSignal.timeout(15000),
       });
     } catch {
       throw new CalendarFailure("CALENDAR_UNREACHABLE", true);
@@ -325,5 +361,85 @@ export class GoogleCalendarProvider implements CalendarProvider {
       }
     }
     return result;
+  }
+  async events(
+    token: Token,
+    source: { providerId: string; timezone: string | null },
+    from: string,
+    to: string,
+    signal: AbortSignal,
+  ): Promise<EventsDto> {
+    const items: EventsDto["items"] = [];
+    const seen = new Set<string>();
+    const fromMs = Date.parse(from),
+      toMs = Date.parse(to);
+    let page: string | undefined;
+    for (let index = 0; index < 4; index++) {
+      const url = new URL(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(source.providerId)}/events`,
+      );
+      url.search = new URLSearchParams({
+        timeMin: from,
+        timeMax: to,
+        singleEvents: "true",
+        showDeleted: "false",
+        maxResults: "250",
+        fields:
+          "timeZone,nextPageToken,items(summary,start(date,dateTime,timeZone),end(date,dateTime,timeZone),status,transparency)",
+        ...(page ? { pageToken: page } : {}),
+      }).toString();
+      const body = await this.json(url.toString(), {
+        headers: { Authorization: `Bearer ${token.accessToken}` },
+        signal,
+      });
+      if (
+        !Array.isArray(body.items) ||
+        (body.nextPageToken !== undefined &&
+          typeof body.nextPageToken !== "string")
+      )
+        throw new CalendarFailure("CALENDAR_INVALID_RESPONSE", true);
+      const zone =
+        typeof body.timeZone === "string" ? body.timeZone : source.timezone;
+      for (const value of body.items) {
+        if (!value || typeof value !== "object") continue;
+        const row = value as {
+          summary?: unknown;
+          status?: string;
+          transparency?: string;
+          start?: EventBoundary;
+          end?: EventBoundary;
+        };
+        const title =
+          typeof row.summary === "string"
+            ? row.summary.trim().slice(0, 300)
+            : "";
+        if (!title || row.status === "cancelled") continue;
+        const allDay = !!row.start?.date && !!row.end?.date;
+        try {
+          const start = eventInstant(row.start, zone),
+            end = eventInstant(row.end, zone);
+          if (
+            Temporal.Instant.compare(start, end) >= 0 ||
+            end.epochMilliseconds <= fromMs ||
+            start.epochMilliseconds >= toMs
+          )
+            continue;
+          items.push({
+            title,
+            startAt: start.toString(),
+            endAt: end.toString(),
+            allDay,
+            blocksTime: row.transparency !== "transparent",
+          });
+        } catch {
+          continue;
+        }
+      }
+      page = body.nextPageToken as string | undefined;
+      if (!page) return { items, partial: false };
+      if (seen.has(page)) break;
+      seen.add(page);
+    }
+    return { items, partial: true };
   }
 }

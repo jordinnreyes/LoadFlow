@@ -1,14 +1,14 @@
-# CargaWise · Prototipo interactivo
+# CargaWise
 
-## Estado del proyecto · 4 de noviembre de 2026
+## Estado del proyecto
 
-El frontend sigue siendo una **web responsive de demostración**, con diseño/rutas preservados. Arquitectura y plan están aprobados; F0 y F1 están **Probadas en el alcance de desarrollo/pruebas**, con revisión del promotor pendiente para aprobar sus hitos. CI Windows/Linux/base efímera correcto; backend académico, OTP/sesiones y Google web local comprobados; APK demo y HTTPS TLS 1.3 probados manualmente en Samsung SM-A546E/API 36 con evidencia correlacionada. La integración de la UI con el backend corresponde a F6. No hay despliegue productivo ni inicio de F2.
+La web responsive está en **F6, integración en curso**. La entrada principal usa el acceso por código de correo y carga la información de la cuenta autenticada. Los escenarios de demostración están separados para desarrollo.
 
 El prototipo completo y sus pruebas quedaron versionados en el baseline `2e41ea7`, rama `codex/f0-f1-backend`. La configuración backend/local, instrucciones, seguridad y verificación se describen en [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md). El registro actual de ejecución está en [PLAN.md, §15](./PLAN.md#15-registro-de-ejecución--3-de-noviembre-de-2026). No se suben `.env`, dependencias, datos o artefactos locales.
 
 | Documento | Uso |
 |---|---|
-| [PRD-v6.md](./PRD-v6.md) | Fuente de verdad v0.6.0, copia íntegra sin cambios de requisitos |
+| [PRD-v6.md](./PRD-v6.md) | Requisitos de producto y decisiones vigentes |
 | [UX-FLOWS.md](./UX-FLOWS.md) | Pantallas, navegación, estados y trazabilidad |
 | [DESIGN-SYSTEM.md](./DESIGN-SYSTEM.md) | Tokens/componentes y refinamiento visual existente |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Diagnóstico, alternativas de stack, diagramas, seguridad, datos, API y costos propuestos |
@@ -18,11 +18,11 @@ Stack aprobado: React/TypeScript/Vite/CSS y backend modular Fastify, PostgreSQL/
 
 OTP por correo y Google Sign-In están aceptados provisionalmente, con Calendar independiente e interfaces seguras SO/proveedor permitidas. Los parámetros de acceso de desarrollo/pruebas y SUP-08 se aprobaron expresamente; no habilitan piloto real. El spike Capacitor Android está en [spikes/android-capacitor](./spikes/android-capacitor/README.md); instalación/flujo demo/HTTPS ya comprobados, mientras Google/Calendar reales en Android siguen para AM-01. El endpoint HTTPS temporal se apagó tras la prueba. OpenAI no se usa en F0/F1; el aviso de key continúa en F5-04.
 
-Los límites y verificaciones del prototipo que aparecen abajo son históricos y se refieren al modo demo, que no consume el backend. La ejecución actual se limita a F0/F1 y al spike técnico acotado; no autoriza producción, pagos, Calendar completo ni IA.
+Las verificaciones del prototipo de las secciones siguientes corresponden al modo demo. El estado de la integración se registra en [PLAN.md, §21](./PLAN.md#21-inicio-de-f6--7-de-noviembre-de-2026).
 
 Aplicación responsive para revisar la experiencia de anticipación de sobrecarga estudiantil. Construida con React, TypeScript, Vite y CSS reutilizable a partir de PRD-v6, UX-FLOWS y DESIGN-SYSTEM.
 
-**Solo demostración local:** datos ficticios, acceso simulado, extracción documental predefinida, Calendar y estimaciones simuladas. No hay backend, base de datos, OAuth, pagos, IA ni llamadas a servicios externos durante el uso de la aplicación. Instalar dependencias y el navegador de pruebas sí requiere descargar paquetes.
+**Demostración local en `/?modo=demo`:** acceso, documentos, Calendar y estimaciones simulados. Para el acceso real en desarrollo, sigue la [guía de conexión local](./docs/DEVELOPMENT.md#primer-recorrido-conectado-de-f6).
 
 ## Ejecutar
 
@@ -42,9 +42,9 @@ npm run build
 npm run preview
 ```
 
-El build estático queda en `dist/`; la vista previa del build usa la URL que imprime Vite, normalmente [http://127.0.0.1:4173/](http://127.0.0.1:4173/). No se requiere configuración de credenciales ni archivos `.env`.
+El build web normal queda en `dist/` y usa la sesión de la cuenta conectada. Para probarlo con Vite Preview, configura la API local con el origen de la URL que imprime Vite, normalmente [http://127.0.0.1:4173/](http://127.0.0.1:4173/).
 
-## Qué revisar primero
+## Qué revisar en la demostración
 
 1. **Entrar con un perfil existente:** en Acceso, pulsar «Continuar con Google». Es una simulación que abre directamente el tablero Free de Alex. Seleccionar Premium antes de entrar abre otro perfil de ejemplo. No se abre un proveedor externo.
 2. **Tablero → actividad → calendario:** abrir «PC 3 · Integrales y aplicaciones» y revisar sus sesiones. Observar el trabajo adelantado del parcial de Física y la semana del 30 nov., que contiene sesiones aunque no haya vencimientos.
@@ -58,12 +58,12 @@ Para comprobar la bienvenida: «Crear cuenta» con un correo de ejemplo nuevo �
 
 ## Rutas y pantallas
 
-Las rutas usan hash, por ejemplo `http://127.0.0.1:5173/#/tablero`, para funcionar sin servidor de rutas.
+Las rutas de esta tabla pertenecen a la demostración de desarrollo. Conserva `?modo=demo` antes del hash, por ejemplo `http://127.0.0.1:5173/?modo=demo#/tablero`.
 
 | Ruta / superficie                                      | UX-FLOWS | Contenido                                                                                |
 | ------------------------------------------------------ | -------- | ---------------------------------------------------------------------------------------- |
 | `/#/acceso` y apertura sin sesión simulada             | S01      | Registro/inicio Google o correo, recuperación explicativa                                |
-| `/#/tablero`                                           | S02      | Cinco semanas iniciales navegables, métricas, filtros, guía, alertas, importación        |
+| `/#/tablero`                                           | S02      | Una semana por página, métricas, filtros, guía, alertas e importación                    |
 | `/#/calendario`                                        | S03      | Semana y agenda; ocupación, disponibilidad, sesiones y plazos                            |
 | `/#/importar`                                          | S04      | Ejemplos de PDF/.xlsx, revisión editable, pendientes y confirmación parcial              |
 | `/#/disponibilidad`                                    | S05      | Ventanas múltiples por día, excepciones y preferencias 60/30/120 min                     |
