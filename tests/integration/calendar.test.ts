@@ -56,27 +56,30 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
     revoke: async () => {
       revoked++;
     },
-    calendars: async (credential) => [
-      {
-        providerId:
-          credential.accessToken === "wrong-google-account" ? "wrong" : "one",
-        name: "Clases ficticias",
-        timezone: "America/Lima",
-        primary: true,
-      },
-      {
-        providerId: "two",
-        name: "Personal ficticio",
-        timezone: "America/Lima",
-        primary: false,
-      },
-      {
-        providerId: "unused",
-        name: "Sin seleccionar",
-        timezone: "America/Lima",
-        primary: false,
-      },
-    ],
+    calendars: async (credential) => {
+      if (failure?.revoked) throw failure;
+      return [
+        {
+          providerId:
+            credential.accessToken === "wrong-google-account" ? "wrong" : "one",
+          name: "Clases ficticias",
+          timezone: "America/Lima",
+          primary: true,
+        },
+        {
+          providerId: "two",
+          name: "Personal ficticio",
+          timezone: "America/Lima",
+          primary: false,
+        },
+        {
+          providerId: "unused",
+          name: "Sin seleccionar",
+          timezone: "America/Lima",
+          primary: false,
+        },
+      ];
+    },
     events: async (credential, source) => {
       assert.ok(credential.scopes.includes(EVENT_TITLES_SCOPE));
       titleQueries.push(source.providerId);
@@ -436,16 +439,22 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
     );
     assert.equal((await r(a, "GET", cap)).json().availableMinutes, null);
     assert.equal((await r(a, "GET", range)).json().busy.length, 1);
-    failure = new CalendarFailure("CALENDAR_RATE_LIMITED", true, 180);
+    failure = new CalendarFailure("CALENDAR_UNREACHABLE", true);
     const limited = await refresh();
     const limitedJob = await worker.claim();
     await worker.process(limitedJob);
+    const firstRetry = (await r(a, "GET", limited.json().statusUrl)).json();
+    assert.equal(firstRetry.status, "queued");
+    assert.equal(Date.parse(firstRetry.runAfter) - now.getTime(), 60000);
+    assert.equal(await worker.claim(), undefined);
+    assert.equal((await r(a, "GET", range)).json().coverage, "unknown");
+    now.setTime(now.getTime() + 61000);
+    failure = new CalendarFailure("CALENDAR_RATE_LIMITED", true, 180);
+    await worker.process((await worker.claim())!);
     const pending = (await r(a, "GET", limited.json().statusUrl)).json();
     assert.equal(pending.status, "queued");
     assert.ok(Date.parse(pending.runAfter) >= now.getTime() + 180000);
     assert.equal(await worker.claim(), undefined);
-    now.setTime(now.getTime() + 181000);
-    await worker.process((await worker.claim())!);
     now.setTime(now.getTime() + 181000);
     await worker.process((await worker.claim())!);
     assert.equal(
@@ -454,6 +463,49 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
     );
     assert.equal((await r(a, "GET", range)).json().busy.length, 1);
     failure = undefined;
+    now.setTime(now.getTime() + 61000);
+    const delayed = await refresh();
+    assert.equal(delayed.statusCode, 202, delayed.body);
+    const expired = await worker.claim();
+    assert.ok(expired);
+    let releaseExpired!: () => void;
+    hold = new Promise<void>((resolve) => (releaseExpired = resolve));
+    const waiting = new Promise<void>((resolve) => (entered = resolve));
+    const obsolete = worker.process(expired);
+    try {
+      await Promise.race([
+        waiting,
+        obsolete.then(() =>
+          assert.fail(
+            "La consulta terminó antes de llegar al proveedor de prueba.",
+          ),
+        ),
+      ]);
+      now.setTime(now.getTime() + 61000);
+      await worker.heartbeat(expired);
+    } finally {
+      releaseExpired();
+      hold = undefined;
+    }
+    await obsolete;
+    const abandoned = await r(a, "GET", delayed.json().statusUrl);
+    assert.equal(abandoned.json().status, "running");
+    assert.equal((await r(a, "GET", range)).json().coverage, "unknown");
+    const peer = new CalendarWorker(f.calendar, () => 0);
+    const claims = (await Promise.all([worker.claim(), peer.claim()])).filter(
+      (claim) => !!claim,
+    );
+    assert.equal(claims.length, 1);
+    const recovered = claims[0];
+    assert.equal(recovered.id, expired.id);
+    assert.equal(recovered.attempts, 2);
+    assert.notEqual(recovered.lease_token, expired.lease_token);
+    await peer.process(recovered);
+    assert.equal(
+      (await r(a, "GET", delayed.json().statusUrl)).json().status,
+      "succeeded",
+    );
+    assert.equal((await r(a, "GET", range)).json().coverage, "complete");
     now.setTime(now.getTime() + 61000);
     const race = await refresh();
     const raceJob = await worker.claim();
@@ -501,6 +553,44 @@ test("Calendar consent, private queue, fresh/stale/partial coverage, bounded ret
     assert.equal(combined.statusCode, 200, combined.body);
     assert.equal(combined.json().eventTitlesAuthorized, true);
     assert.equal(combined.json().eventTitlesEnabled, false);
+    now.setTime(now.getTime() + 61000);
+    failure = new CalendarFailure("CALENDAR_REVOKED", false, 0, true);
+    const revokedRefresh = await refresh();
+    assert.equal(revokedRefresh.statusCode, 202, revokedRefresh.body);
+    await worker.process((await worker.claim())!);
+    const revokedJob = (
+      await r(a, "GET", revokedRefresh.json().statusUrl)
+    ).json();
+    assert.equal(revokedJob.status, "failed");
+    assert.equal(revokedJob.attempts, 1);
+    assert.equal(await worker.claim(), undefined);
+    assert.equal(
+      (await r(a, "GET", "/api/v1/calendar/connection")).json().state,
+      "revoked",
+    );
+    assert.equal((await r(a, "GET", range)).json().coverage, "unknown");
+    assert.equal((await r(a, "GET", "/api/v1/auth/session")).statusCode, 200);
+    const manualCapacity = `/api/v1/periods/${period}/capacity?from=2030-04-01&to=2030-04-02`;
+    assert.equal(
+      (await r(a, "GET", manualCapacity)).json().availableMinutes,
+      null,
+    );
+    const reconfirmed = await r(
+      a,
+      "PUT",
+      `/api/v1/periods/${period}/availability`,
+      {
+        ...config,
+        manualCoverage: [{ from: "2030-04-01", to: "2030-04-02" }],
+      },
+      manual.headers.etag,
+    );
+    assert.equal(reconfirmed.statusCode, 200, reconfirmed.body);
+    assert.equal(
+      (await r(a, "GET", manualCapacity)).json().availableMinutes,
+      180,
+    );
+    failure = undefined;
     const combinedDisconnected = await r(
       a,
       "DELETE",

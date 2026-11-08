@@ -11,12 +11,14 @@ import type {
 } from "@playwright/test";
 import type { Response } from "../../src/api/client.js";
 import { loopback } from "../../server/config.js";
+import { DomainError } from "../../server/errors.js";
 import { SupabaseProvider } from "../../server/modules/identity/provider.js";
 import { SESSION_COOKIE } from "../../server/modules/identity/service.js";
 import { isolatedExtract } from "../../server/modules/imports/runner.js";
 import { ImportService } from "../../server/modules/imports/service.js";
 import { privateImportStorage } from "../../server/modules/imports/storage.js";
 import { ImportWorker } from "../../server/modules/jobs/import-worker.js";
+import { PlanningWorker } from "../../server/modules/jobs/planning-worker.js";
 import { pdfFixture } from "../fixtures/imports/pdf-fixture.js";
 import { fixture } from "../integration/fixture.js";
 import { mailCode } from "../integration/mailpit.js";
@@ -406,6 +408,94 @@ test("F7-01 registers with OTP, imports, plans, replans and persists progress ac
             status,
           })),
         );
+      },
+    );
+    await t.test(
+      "F7-05 keeps an unsaved edit during a database outage and retries it once",
+      async (outage) => {
+        await a.goto(origin + "/#" + activityPath);
+        await a.getByRole("button", { name: "Editar datos" }).click();
+        const titleField = a.getByLabel("Título de la actividad");
+        const revisedTitle = "Informe recuperado después del fallo";
+        await titleField.fill(revisedTitle);
+        const save = a.getByRole("button", { name: "Guardar", exact: true });
+        const nextSave = () =>
+          a.waitForResponse(
+            (r) =>
+              new URL(r.url()).pathname === `${api}/activities/${activityId}` &&
+              r.request().method() === "PATCH",
+          );
+        const down = outage.mock.method(f.db.pool, "connect", async () => {
+          throw Object.assign(
+            new Error("Synthetic database transport failure"),
+            { code: "ECONNREFUSED" },
+          );
+        });
+        let retryKey: string;
+        try {
+          const rejected = nextSave();
+          await save.click();
+          const failure = await rejected;
+          assert.equal(failure.status(), 503);
+          assert.equal(
+            (await failure.json()).error.code,
+            "DEPENDENCY_UNAVAILABLE",
+          );
+          retryKey = failure.request().headers()["idempotency-key"];
+          assert.ok(retryKey);
+          await expect(a.getByRole("alert")).toContainText(
+            "La persistencia no está disponible",
+          );
+          await expect(titleField).toHaveValue(revisedTitle);
+        } finally {
+          down.mock.restore();
+        }
+        const storedUrl = url(`/activities/${activityId}`);
+        const before = await response<Response<"getActivity", 200>>(
+          await b.request.get(storedUrl),
+        );
+        assert.equal(before.title, title);
+        const saved = nextSave();
+        await save.click();
+        const recovered = await saved;
+        assert.equal(
+          recovered.request().headers()["idempotency-key"],
+          retryKey,
+        );
+        const edited =
+          await response<Response<"updateActivity", 200>>(recovered);
+        assert.equal(edited.revision, before.revision + 1);
+        assert.equal(edited.title, revisedTitle);
+        assert.equal(edited.realTotalMinutes, 20);
+        await expect(
+          a.getByRole("heading", { name: revisedTitle }),
+        ).toBeVisible();
+        const calculation = outage.mock.method(
+          f.planning,
+          "preview",
+          async () => {
+            throw new DomainError(
+              503,
+              "PLANNING_TIMEOUT",
+              "Fallo sintético del cálculo",
+            );
+          },
+        );
+        try {
+          await new PlanningWorker(f.planning).tick();
+        } finally {
+          calculation.mock.restore();
+        }
+        await a.goto(origin + "/#/tablero");
+        await expect(
+          a.getByText("No pudimos actualizar la distribución", { exact: true }),
+        ).toBeVisible();
+        await expect(
+          a.getByText(/Las sesiones mostradas son las últimas confirmadas/),
+        ).toBeVisible();
+        await expect(
+          a.getByRole("button", { name: "Revisar nueva distribución" }),
+        ).toBeEnabled();
       },
     );
   } finally {

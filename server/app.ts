@@ -9,6 +9,7 @@ import {
   EmailVerification,
 } from "../packages/contracts/index.js";
 import { DomainError } from "./errors.js";
+import { databaseUnavailable } from "./db/client.js";
 import { assertRuntime } from "./config.js";
 import { identityRoutes } from "./modules/identity/routes.js";
 import type { Identity } from "./modules/identity/service.js";
@@ -48,7 +49,11 @@ export async function buildApp(
           ],
           serializers: {
             req: (req) => ({ method: req.method }),
-            err: () => ({ type: "Error", message: "Request failed", stack: "" }),
+            err: () => ({
+              type: "Error",
+              message: "Request failed",
+              stack: "",
+            }),
           },
         }
       : false,
@@ -79,24 +84,36 @@ export async function buildApp(
   app.addSchema(EmailVerification);
   app.setErrorHandler((caught, request, reply) => {
     const error = caught as FastifyError;
-    const domain = error instanceof DomainError;
-    const invalid = !!error.validation;
+    const validation = error.validation;
+    const persistenceDown =
+      !(error instanceof DomainError) && databaseUnavailable(error);
+    const domain =
+      error instanceof DomainError
+        ? error
+        : persistenceDown
+          ? new DomainError(
+              503,
+              "DEPENDENCY_UNAVAILABLE",
+              "La persistencia no está disponible. Vuelve a intentarlo.",
+            )
+          : undefined;
+    const invalid = !!validation;
     const status = domain
-      ? error.status
+      ? domain.status
       : invalid
         ? 422
         : [400, 413, 415, 429].includes(error.statusCode ?? 0)
           ? error.statusCode!
           : 500;
-    if (status === 500)
+    if (status === 500 || persistenceDown)
       request.log.error(
-        { requestId: request.id, code: "INTERNAL_ERROR" },
+        { requestId: request.id, code: domain?.code ?? "INTERNAL_ERROR" },
         "Request failed",
       );
     reply.status(status).send({
       error: {
         code: domain
-          ? error.code
+          ? domain.code
           : invalid
             ? "VALIDATION_ERROR"
             : status === 400
@@ -109,7 +126,7 @@ export async function buildApp(
                     ? "REQUEST_LIMITED"
                     : "INTERNAL_ERROR",
         message: domain
-          ? error.message
+          ? domain.message
           : invalid
             ? "Revisa los campos indicados."
             : status === 400
@@ -121,8 +138,8 @@ export async function buildApp(
                   : status === 429
                     ? "Espera antes de reintentar."
                     : "No pudimos completar la operación.",
-        fieldErrors: invalid
-          ? error.validation!.map((v) => ({
+        fieldErrors: validation
+          ? validation.map((v) => ({
               field: v.instancePath || "/",
               message: v.message ?? "Valor inválido",
             }))

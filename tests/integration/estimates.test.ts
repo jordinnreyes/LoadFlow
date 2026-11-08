@@ -218,6 +218,8 @@ test("Premium is operator-controlled and concurrent requests cannot overspend or
 
 test("uncertain calls retain budget and require explicit reconciliation before another attempt", async () => {
   let calls = 0;
+  const late = deferred<ProviderResult>();
+  let signal: AbortSignal | undefined;
   const f = await fixture(
     undefined,
     undefined,
@@ -226,9 +228,12 @@ test("uncertain calls retain budget and require explicit reconciliation before a
       new Estimates(
         academics,
         {
-          estimate: async () => {
+          estimate: async (_context, request) => {
             calls++;
-            if (calls === 1) return new Promise<ProviderResult>(() => {});
+            if (calls === 1) {
+              signal = request.signal;
+              return late.promise;
+            }
             return success;
           },
         },
@@ -272,18 +277,39 @@ test("uncertain calls retain budget and require explicit reconciliation before a
       dueDate: "2030-01-10",
     });
     assert.equal(activity.statusCode, 201, activity.body);
-    const path = "/api/v1/activities/" + activity.json().id + "/estimates";
+    const activityPath = "/api/v1/activities/" + activity.json().id;
+    const path = activityPath + "/estimates";
+    let revision = '"activity-1"';
     const make = (input = excerpt) =>
-      f.request(a, "POST", path, { excerpt: input }, '"activity-1"');
+      f.request(a, "POST", path, { excerpt: input }, revision);
     const first = await make();
     assert.equal(first.statusCode, 202, first.body);
     assert.equal(first.json().state, "outcome_unknown");
+    assert.equal(first.json().manualEntryAvailable, true);
+    assert.equal(signal?.aborted, true);
+    late.resolve(success);
+    const afterLate = await f.request(
+      a,
+      "GET",
+      first.headers.location as string,
+    );
+    assert.equal(afterLate.json().state, "outcome_unknown");
+    assert.equal(afterLate.json().suggestion, null);
     assert.equal((await make()).json().id, first.json().id);
     assert.equal(
       (await make(estimateCorpus[1].excerpt)).json().error.code,
       "ESTIMATE_BUDGET_LIMIT",
     );
     assert.equal(calls, 1);
+    const manual = await f.request(
+      a,
+      "PATCH",
+      activityPath,
+      { operatingMinutes: 55 },
+      revision,
+    );
+    assert.equal(manual.statusCode, 200, manual.body);
+    revision = String(manual.headers.etag);
     await runPremiumCommand(
       operator,
       {
@@ -298,6 +324,10 @@ test("uncertain calls retain budget and require explicit reconciliation before a
     const retry = await make();
     assert.equal(retry.json().state, "complete");
     assert.equal(calls, 2);
+    assert.equal(
+      (await f.request(a, "GET", activityPath)).json().operatingMinutes,
+      55,
+    );
     const revoked = await f.request(
       a,
       "PUT",

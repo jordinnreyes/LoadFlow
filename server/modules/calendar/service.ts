@@ -73,6 +73,7 @@ export type JobRow = {
   finished_at: Date | null;
   safe_error: string | null;
   lease_token: string | null;
+  lease_until: Date | null;
 };
 type ScopedJob = JobRow & {
   requested_week: string | null;
@@ -81,6 +82,11 @@ type ScopedJob = JobRow & {
 const query = async <T>(ctx: Context, statement: SQL) =>
   (await ctx.db.execute(statement)).rows as unknown as T[];
 const iso = (d: Date | null) => (d ? new Date(d).toISOString() : null);
+const ownsLease = (current: JobRow | undefined, claim: JobRow, now: Date) =>
+  current?.status === "running" &&
+  current.lease_token === claim.lease_token &&
+  current.lease_until !== null &&
+  new Date(current.lease_until) > now;
 const unavailable = () =>
   new DomainError(
     503,
@@ -884,7 +890,7 @@ export class CalendarService {
         current = (
           await query<ScopedJob>(
             ctx,
-            sql`select *, week_start::text as requested_week from app.jobs where owner_id=${ctx.owner} and id=${job.id}`,
+            sql`select *, week_start::text as requested_week from app.jobs where owner_id=${ctx.owner} and id=${job.id} for update`,
           )
         )[0];
       if (
@@ -893,8 +899,7 @@ export class CalendarService {
         c.state !== "active" ||
         c.revision !== job.connection_revision ||
         c.selection_revision !== job.selection_revision ||
-        current.status !== "running" ||
-        current.lease_token !== job.lease_token
+        !ownsLease(current, job, this.now())
       )
         return null;
       if (!(await this.sourceRows(ctx)).some((s) => s.selected)) {
@@ -967,7 +972,7 @@ export class CalendarService {
         j = (
           await query<JobRow>(
             ctx,
-            sql`select * from app.jobs where owner_id=${ctx.owner} and id=${job.id}`,
+            sql`select * from app.jobs where owner_id=${ctx.owner} and id=${job.id} for update`,
           )
         )[0];
       if (
@@ -975,8 +980,7 @@ export class CalendarService {
         c.state !== "active" ||
         c.revision !== job.connection_revision ||
         c.selection_revision !== job.selection_revision ||
-        j.status !== "running" ||
-        j.lease_token !== job.lease_token
+        !ownsLease(j, job, this.now())
       )
         return false;
       const comparison = async () => {
@@ -1087,14 +1091,15 @@ export class CalendarService {
         j = (
           await query<JobRow>(
             ctx,
-            sql`select * from app.jobs where owner_id=${ctx.owner} and id=${job.id}`,
+            sql`select * from app.jobs where owner_id=${ctx.owner} and id=${job.id} for update`,
           )
         )[0];
       if (
         !c ||
+        c.state !== "active" ||
         c.revision !== job.connection_revision ||
-        j.status !== "running" ||
-        j.lease_token !== job.lease_token
+        c.selection_revision !== job.selection_revision ||
+        !ownsLease(j, job, this.now())
       )
         return;
       await ctx.db.execute(

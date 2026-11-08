@@ -440,9 +440,15 @@ export function ConnectedWeek({
           {data.plan.state === "stale" && (
             <Notice
               tone="warning"
-              title="La distribución necesita actualizarse"
+              title={
+                data.plan.recalculation?.state === "failed"
+                  ? "No pudimos actualizar la distribución"
+                  : "La distribución necesita actualizarse"
+              }
             >
               Las sesiones mostradas son las últimas confirmadas.
+              {data.plan.recalculation?.state === "failed" &&
+                " Puedes revisar una nueva distribución para reintentar."}
             </Notice>
           )}
           {showWeek ? (

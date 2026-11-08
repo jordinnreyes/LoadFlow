@@ -141,7 +141,7 @@ export class SupabaseProvider implements AuthProvider {
       const { data, error } = await this.client().auth.refreshSession({
         refresh_token: refreshToken,
       });
-      if (error) throw denied();
+      if (error) throw (error.status ?? 500) >= 500 ? unavailable() : denied();
       return await this.proof(data.session);
     } catch (error) {
       if (error instanceof DomainError) throw error;

@@ -8,6 +8,21 @@ import { buildApp } from "../../server/app.js";
 import { SupabaseProvider } from "../../server/modules/identity/provider.js";
 import { privateImportStorage } from "../../server/modules/imports/storage.js";
 
+test("F7 a transient Auth refresh failure does not look like a revoked session", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"] });
+  const transport = t.mock.method(globalThis, "fetch", async () => {
+    // Simulate the provider failing near the end of the SDK retry window.
+    t.mock.timers.setTime(Date.now() + 30_000);
+    return new Response(null, { status: 503 });
+  });
+  const auth = new SupabaseProvider("http://127.0.0.1:54321", "fixture-key");
+  await assert.rejects(auth.refresh("fixture-refresh"), {
+    status: 503,
+    code: "AUTH_UNAVAILABLE",
+  });
+  assert.equal(transport.mock.callCount(), 1);
+});
+
 test("F7 logs route templates and safe errors without OAuth queries, credentials or documents", async () => {
   const records: string[] = [];
   const stream = new Writable({

@@ -77,3 +77,23 @@ npm run test:integration
 npm run test:e2e:f7
 npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org
 ```
+
+## F7-05 · Fallos y recuperación
+
+| Fallo inyectado | Comportamiento comprobado |
+|---|---|
+| Calendar deja de responder, limita solicitudes o revoca el permiso | La caída inicia un reintento a los 60 s. Un 429 simulado respeta `Retry-After` y la cola se detiene tras tres intentos. La ocupación previa queda como referencia sin certificar capacidad libre. La revocación detiene los reintentos de ese trabajo y conserva la sesión de WiseLoad. La disponibilidad manual vuelve a acreditar capacidad cuando el estudiante confirma de nuevo el rango. |
+| Worker de Calendar termina después de vencer su lease | Su heartbeat no renueva una lease vencida y su respuesta no publica cobertura. Dos workers compiten por la recuperación y solo uno recibe un token nuevo para completar la sincronización. |
+| OpenAI simulado supera el timeout y responde después | Se aborta la espera, la operación queda con resultado incierto y la respuesta tardía no publica una sugerencia. El presupuesto conserva la reserva hasta conciliación. Las solicitudes simultáneas no duplican esa reserva. Se puede registrar esfuerzo manual y conservarlo aunque una llamada posterior produzca una sugerencia. |
+| Cálculo de planificación interrumpido | Un timeout del worker conserva los bloques y la revisión del último plan confirmado, lo marca desactualizado y permite recalcular manualmente. El Tablero muestra el fallo y mantiene la acción de revisión. La prueba del hilo de cálculo usa un timeout reducido de fixture. |
+| PostgreSQL o Auth dejan de responder | Se inyecta un error de conexión solo en el pool del fixture y Chromium recibe un 503. La edición sigue en el formulario. Al recuperar la conexión, el reintento usa la misma clave de idempotencia y aplica una sola revisión, con el progreso previo intacto. Un 503 al renovar la sesión se distingue de una credencial rechazada. |
+
+Los proveedores se simulan. Las colas y la persistencia usan PostgreSQL local con cuentas sintéticas. El fallo de conexión se inyecta por aplicación de prueba para mantener disponible la pila local compartida.
+
+### Repetición local
+
+```sh
+npm run check
+npm run test:integration
+npm run test:e2e:f7
+```

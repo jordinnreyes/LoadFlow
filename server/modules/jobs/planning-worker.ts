@@ -18,7 +18,7 @@ export class PlanningWorker {
       await ctx.db
         .execute(sql`update app.planning_jobs set status=${status},proposal_id=${proposal},safe_error=${error},
         lease_token=null,lease_until=null,run_after=${new Date(now.getTime() + 5000 * job.attempts).toISOString()}
-        where owner_id=${job.owner_id} and period_id=${job.period_id} and lease_token=${job.lease_token}`);
+        where owner_id=${job.owner_id} and period_id=${job.period_id} and status='running' and lease_token=${job.lease_token} and lease_until>${now.toISOString()}`);
     });
   }
   private async run() {

@@ -1,5 +1,29 @@
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
+
+const unavailableCodes = new Set([
+  "57P01",
+  "57P02",
+  "57P03",
+  "53300",
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "EPIPE",
+]);
+
+export function databaseUnavailable(error: unknown) {
+  for (let depth = 0; depth < 5 && error instanceof Error; depth++) {
+    const code = "code" in error ? error.code : undefined;
+    if (
+      typeof code === "string" &&
+      (unavailableCodes.has(code) || /^08[0-9A-Z]{3}$/.test(code))
+    )
+      return true;
+    error = error.cause;
+  }
+  return false;
+}
 export async function assertApplicationRoles(
   runtime: pg.Pool,
   identity: pg.Pool,

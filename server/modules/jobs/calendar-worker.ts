@@ -17,8 +17,9 @@ export class CalendarWorker {
   }
   async heartbeat(job: JobRow) {
     await this.service.academics.read(job.owner_id, async (ctx) => {
+      const now = this.service.now();
       await ctx.db.execute(
-        sql`update app.jobs set heartbeat_at=${this.service.now().toISOString()},lease_until=${new Date(this.service.now().getTime() + 60000).toISOString()} where owner_id=${ctx.owner} and id=${job.id} and status='running' and lease_token=${job.lease_token}`,
+        sql`update app.jobs set heartbeat_at=${now.toISOString()},lease_until=${new Date(now.getTime() + 60000).toISOString()} where owner_id=${ctx.owner} and id=${job.id} and status='running' and lease_token=${job.lease_token} and lease_until>${now.toISOString()}`,
       );
     });
   }
@@ -29,8 +30,9 @@ export class CalendarWorker {
     delay = 0,
   ) {
     return this.service.academics.read(job.owner_id, async (ctx) => {
+      const now = this.service.now();
       await ctx.db.execute(
-        sql`update app.jobs set status=${status},safe_error=${code},run_after=${new Date(this.service.now().getTime() + delay * 1000).toISOString()},finished_at=${status === "queued" ? null : this.service.now().toISOString()},lease_token=null,lease_until=null where owner_id=${ctx.owner} and id=${job.id} and status='running' and lease_token=${job.lease_token}`,
+        sql`update app.jobs set status=${status},safe_error=${code},run_after=${new Date(now.getTime() + delay * 1000).toISOString()},finished_at=${status === "queued" ? null : now.toISOString()},lease_token=null,lease_until=null where owner_id=${ctx.owner} and id=${job.id} and status='running' and lease_token=${job.lease_token} and lease_until>${now.toISOString()}`,
       );
     });
   }

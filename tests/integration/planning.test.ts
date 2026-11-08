@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { fixture } from "./fixture.js";
 import { PlanningWorker } from "../../server/modules/jobs/planning-worker.js";
+import { DomainError } from "../../server/errors.js";
 
 const api = "/api/v1";
 const now = () => new Date("2030-01-01T13:00:00Z");
@@ -37,6 +38,91 @@ const newActivity = (periodId: string, title: string) => ({
   allowedStartAt: "2030-01-01T13:00:00Z",
   operatingMinutes: 120,
   divisibility: "divisible",
+});
+
+test("F7 keeps the last plan after an automatic calculation times out and allows manual recovery", async (t) => {
+  const f = await fixture(now());
+  try {
+    const a = await f.client();
+    const created = await f.request(a, "POST", api + "/periods", {
+      name: "F7 recuperación",
+    });
+    assert.equal(created.statusCode, 201, created.body);
+    const id = created.json().id;
+    const period = api + "/periods/" + id;
+    const availability = await f.request(
+      a,
+      "PUT",
+      period + "/availability",
+      config(),
+      '"availability-0"',
+    );
+    assert.equal(availability.statusCode, 200, availability.body);
+    const activity = await f.request(
+      a,
+      "POST",
+      api + "/activities",
+      newActivity(id, "Preparación con recálculo fallido"),
+    );
+    assert.equal(activity.statusCode, 201, activity.body);
+    const current = () => f.request(a, "GET", period + "/plan");
+    async function applyManual() {
+      const preview = await f.request(
+        a,
+        "POST",
+        period + "/planning-proposals",
+        { kind: "recalculate" },
+        etag(await current()),
+      );
+      assert.equal(preview.statusCode, 201, preview.body);
+      const applied = await f.request(
+        a,
+        "POST",
+        api + "/planning-proposals/" + preview.json().id + "/apply",
+        { confirmations: [] },
+        etag(preview),
+      );
+      assert.equal(applied.statusCode, 200, applied.body);
+      return applied.json();
+    }
+    const original = await applyManual();
+    assert.equal(original.result.balances[0].scheduled, 120);
+    const edited = await f.request(
+      a,
+      "PATCH",
+      api + "/activities/" + activity.json().id,
+      { operatingMinutes: 90 },
+      etag(activity),
+    );
+    assert.equal(edited.statusCode, 200, edited.body);
+    const fail = t.mock.method(f.planning, "preview", async () => {
+      throw new DomainError(
+        503,
+        "PLANNING_TIMEOUT",
+        "Fallo sintético del cálculo",
+      );
+    });
+    try {
+      await new PlanningWorker(f.planning).tick();
+    } finally {
+      fail.mock.restore();
+    }
+    assert.equal(fail.mock.callCount(), 1);
+    const after = await current();
+    assert.equal(after.statusCode, 200, after.body);
+    assert.equal(after.json().state, "stale");
+    assert.deepEqual(after.json().recalculation, {
+      state: "failed",
+      errorCode: "PLANNING_TIMEOUT",
+    });
+    assert.equal(after.json().planRevision, original.planRevision);
+    assert.deepEqual(after.json().result.sessions, original.result.sessions);
+    const recovered = await applyManual();
+    assert.equal(recovered.planRevision, original.planRevision + 1);
+    assert.equal(recovered.result.balances[0].scheduled, 90);
+  } finally {
+    await f.close();
+  }
 });
 
 test("F4 plans beyond five weeks, applies dates once, and revalidates automatic changes and undo", async () => {
