@@ -182,6 +182,118 @@ test("PDF extracts syllabus weeks and only evaluated rows in positioned schedule
   assert.equal(schedule.candidates[1].fields.type, null);
 });
 
+test("F7 PDF annex preserves conflicting dates, evaluation evidence and project ambiguity", async () => {
+  const result = await extract(
+    pdfFixture([
+      [
+        [30, 720, "MAT4830 - Modelos"],
+        [30, 690, "Curso"],
+        [125, 690, "Fecha"],
+        [260, 690, "Día"],
+        [330, 690, "Hora Inicio"],
+        [415, 690, "Hora Fin"],
+        [490, 690, "Evaluación"],
+        [125, 671, "2030-03-20"],
+        [30, 660, "MAT4830"],
+        [125, 660, "2030-03-22"],
+        [260, 660, "Viernes"],
+        [330, 660, "09:00"],
+        [415, 660, "10:00"],
+        [490, 660, "PC1"],
+        [30, 630, "MAT4830"],
+        [125, 630, "2030-03-21"],
+        [260, 630, "Viernes"],
+        [330, 630, "14:00"],
+        [415, 630, "16:00"],
+        [490, 630, "Examen 2"],
+        [30, 600, "MAT4830"],
+        [125, 600, "2030-03-28"],
+        [260, 600, "Jueves"],
+        [330, 600, "09:00"],
+        [415, 600, "11:00"],
+        [490, 600, "Proyecto"],
+      ],
+      "raster",
+    ]),
+    "annex.pdf",
+  );
+  assert.deepEqual(
+    result.units.map((unit) => unit.state),
+    ["recognized", "no_text"],
+  );
+  assert.deepEqual(
+    result.candidates.map(({ fields }) => fields),
+    [
+      {
+        title: "PC1",
+        course: "MAT4830",
+        type: "Práctica calificada",
+        dueDate: null,
+        dueTime: "09:00",
+        endTime: "10:00",
+      },
+      {
+        title: "Examen 2",
+        course: "MAT4830",
+        type: null,
+        dueDate: null,
+        dueTime: "14:00",
+        endTime: "16:00",
+      },
+      {
+        title: "Proyecto",
+        course: "MAT4830",
+        type: null,
+        dueDate: "2030-03-28",
+        dueTime: null,
+        endTime: null,
+      },
+    ],
+  );
+  const [conflicting, mismatch, project] = result.candidates;
+  assert.match(conflicting.original.dueDate ?? "", /2030-03-20/);
+  assert.match(conflicting.original.dueDate ?? "", /2030-03-22/);
+  assert.ok(conflicting.issues.includes("dueDate:MULTIPLE_DATES"));
+  assert.equal(mismatch.original.dueDate, "2030-03-21");
+  assert.ok(mismatch.issues.includes("dueDate:WEEKDAY_MISMATCH"));
+  assert.ok(project.issues.includes("dueTime:SESSION_IS_NOT_DEADLINE"));
+  assert.deepEqual(result.warnings, ["PDF_PAGES_WITHOUT_TEXT"]);
+});
+
+test("F7 PDF multipage group handout does not treat exercises or print metadata as deadlines", async () => {
+  const result = await extract(
+    pdfFixture([
+      [
+        "Trabajo grupal: Modelo de población",
+        "Semana: 2",
+        "Entregable: cuaderno",
+        "2030-2",
+      ],
+      [
+        "Ejercicio 1. Compare mediciones de 12/04/2030 y 14/04/2030.",
+        "19/04/30, 12:30 export.md",
+      ],
+    ]),
+    "group-handout.pdf",
+  );
+  assert.deepEqual(
+    result.candidates.map(({ fields }) => fields),
+    [
+      {
+        title: "Trabajo grupal: Modelo de población",
+        course: null,
+        type: "Entrega grupal",
+        dueDate: null,
+        dueTime: null,
+        endTime: null,
+      },
+    ],
+  );
+  assert.ok(
+    result.candidates[0].issues.includes("dueDate:RELATIVE_DATE_REVIEW"),
+  );
+});
+
 test("parser rejects empty, disguised, corrupt, encrypted and excessive input", async () => {
   await rejects(Buffer.alloc(0), "empty.pdf", "FILE_EMPTY");
   await rejects(Buffer.from("MZ"), "disguised.pdf", "FILE_UNSUPPORTED");
@@ -220,7 +332,7 @@ test("parser rejects empty, disguised, corrupt, encrypted and excessive input", 
   zip.writeUInt32LE(limits.zipBytes + 1, central + 24);
   await rejects(zip, "expansion.xlsx", "XLSX_ZIP_EXPANSION_LIMIT");
   await rejects(zip, "macro.xlsm", "FILE_UNSUPPORTED");
-  const scan = await extract(pdfFixture([[]]), "image-only.pdf");
+  const scan = await extract(pdfFixture(["raster"]), "image-only.pdf");
   assert.equal(scan.candidates.length, 0);
   assert.deepEqual(scan.warnings, [
     "PDF_PAGES_WITHOUT_TEXT",

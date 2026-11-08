@@ -5,7 +5,10 @@ import { resolve } from "node:path";
 import test from "node:test";
 import { Temporal } from "@js-temporal/polyfill";
 import { preview } from "vite";
-import type { APIResponse, Response as BrowserResponse } from "@playwright/test";
+import type {
+  APIResponse,
+  Response as BrowserResponse,
+} from "@playwright/test";
 import type { Response } from "../../src/api/client.js";
 import { loopback } from "../../server/config.js";
 import { SupabaseProvider } from "../../server/modules/identity/provider.js";
@@ -14,6 +17,7 @@ import { isolatedExtract } from "../../server/modules/imports/runner.js";
 import { ImportService } from "../../server/modules/imports/service.js";
 import { privateImportStorage } from "../../server/modules/imports/storage.js";
 import { ImportWorker } from "../../server/modules/jobs/import-worker.js";
+import { pdfFixture } from "../fixtures/imports/pdf-fixture.js";
 import { fixture } from "../integration/fixture.js";
 import { mailCode } from "../integration/mailpit.js";
 
@@ -67,7 +71,7 @@ test("F7-01 registers with OTP, imports, plans, replans and persists progress ac
   const worker = new ImportWorker(f.imports!, isolatedExtract);
   let vite: Awaited<ReturnType<typeof preview>> | undefined;
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
-  let original: string | undefined;
+  const originals = new Set<string>();
   try {
     const apiUrl = await f.app.listen({ host: "127.0.0.1", port: 0 });
     vite = await preview({
@@ -122,24 +126,29 @@ test("F7-01 registers with OTP, imports, plans, replans and persists progress ac
     await a
       .getByRole("link", { name: "Importar actividad — PDF/Excel" })
       .click();
-    await a
-      .getByLabel("Archivo PDF o XLSX")
-      .setInputFiles(resolve("tests/fixtures/imports/anexo.xlsx"));
-    const uploaded = a.waitForResponse(
-      (r) =>
-        new URL(r.url()).pathname === api + "/imports" &&
-        r.request().method() === "POST",
-    );
-    await a.getByRole("button", { name: "Subir para revisar" }).click();
-    const uploadResponse = await uploaded;
-    assert.equal(uploadResponse.status(), 202);
-    const job: Response<"uploadImport", 202> = await uploadResponse.json();
-    original = job.documentId;
-    await worker.tick();
-    await expect(
-      a.getByText("Listo para revisar", { exact: true }),
-    ).toBeVisible({ timeout: 40_000 });
-    await assert.rejects(storage.get(job.documentId));
+    async function upload(
+      file: string | { name: string; mimeType: string; buffer: Buffer },
+    ) {
+      await a.getByLabel("Archivo PDF o XLSX").setInputFiles(file);
+      const uploaded = a.waitForResponse(
+        (r) =>
+          new URL(r.url()).pathname === api + "/imports" &&
+          r.request().method() === "POST",
+      );
+      await a.getByRole("button", { name: "Subir para revisar" }).click();
+      const job = await response<Response<"uploadImport", 202>>(
+        await uploaded,
+        202,
+      );
+      originals.add(job.documentId);
+      await worker.tick();
+      await expect(
+        a.getByText("Listo para revisar", { exact: true }),
+      ).toBeVisible({ timeout: 40_000 });
+      await assert.rejects(storage.get(job.documentId));
+      return job;
+    }
+    const job = await upload(resolve("tests/fixtures/imports/anexo.xlsx"));
     const candidate = a
       .locator("details")
       .filter({ hasText: /· Borrador/ })
@@ -315,10 +324,95 @@ test("F7-01 registers with OTP, imports, plans, replans and persists progress ac
       (await other.request.get(url(`/activities/${activityId}`))).status(),
       401,
     );
+
+    await t.test(
+      "F7-02 offers manual entry from an image-only PDF and preserves saved work",
+      async () => {
+        const activityUrl = url(`/activities/${activityId}`);
+        const existing = await response<Response<"getActivity", 200>>(
+          await a.request.get(activityUrl),
+        );
+        const candidatesUrl = url(`/imports/${job.id}/candidates`);
+        const drafts = await response<Response<"listImportCandidates", 200>>(
+          await a.request.get(candidatesUrl),
+        );
+        await a.goto(origin + "/#/importar");
+        const scan = await upload({
+          name: "scan.pdf",
+          mimeType: "application/pdf",
+          buffer: pdfFixture(["raster"]),
+        });
+        const scanPath = `/imports/${scan.id}`;
+        const review = await response<Response<"getImport", 200>>(
+          await a.request.get(url(scanPath)),
+        );
+        assert.equal(review.manualEntryAvailable, true);
+        assert.deepEqual(
+          review.coverage.map((unit) => unit.state),
+          ["no_text"],
+        );
+        await expect(
+          a.getByText("Hay páginas del PDF sin texto seleccionable."),
+        ).toBeVisible();
+        await expect(
+          a.getByText(/No se encontraron filas reconocibles/),
+        ).toBeVisible();
+
+        await a.getByRole("link", { name: "Añadir manualmente" }).click();
+        await a
+          .getByLabel("Título de la actividad")
+          .fill("Actividad transcrita del escaneo");
+        await a.getByLabel("Fecha límite").fill(deadline);
+        const created = a.waitForResponse(
+          (r) =>
+            new URL(r.url()).pathname === `${api}/activities` &&
+            r.request().method() === "POST",
+        );
+        await a.getByRole("button", { name: "Guardar", exact: true }).click();
+        const manual = await response<Response<"createActivity", 201>>(
+          await created,
+          201,
+        );
+        await expect(
+          a.getByRole("heading", { name: manual.title }),
+        ).toBeVisible();
+
+        await a.goto(origin + `/#/importar/${scan.id}`);
+        await a.getByRole("button", { name: "Retirar fuente" }).click();
+        await a.getByRole("button", { name: "Confirmar retirada" }).click();
+        await expect(a.getByText("Cancelada", { exact: true })).toBeVisible();
+        assert.equal(
+          (await a.request.get(url(`/activities/${manual.id}`))).status(),
+          200,
+        );
+        const saved = await response<Response<"getActivity", 200>>(
+          await a.request.get(activityUrl),
+        );
+        assert.equal(saved.revision, existing.revision);
+        assert.equal(saved.dueDate, existing.dueDate);
+        assert.equal(saved.realTotalMinutes, 20);
+        const savedDrafts = await response<
+          Response<"listImportCandidates", 200>
+        >(await a.request.get(candidatesUrl));
+        assert.deepEqual(
+          savedDrafts.items.map(({ id, revision, status }) => ({
+            id,
+            revision,
+            status,
+          })),
+          drafts.items.map(({ id, revision, status }) => ({
+            id,
+            revision,
+            status,
+          })),
+        );
+      },
+    );
   } finally {
     await browser?.close();
     await vite?.close();
-    if (original) await storage.remove(original).catch(() => {});
+    for (const original of originals)
+      await storage.remove(original).catch(() => {});
     await f.close();
   }
 });

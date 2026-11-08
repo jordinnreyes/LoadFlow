@@ -8,4 +8,6 @@ Los archivos de este directorio contienen códigos, títulos y fechas ficticios.
 - `protected.pdf` es una página sintética vacía cifrada con una contraseña de fixture.
 - `pdf-fixture.ts` genera PDF textual con coordenadas reales para enunciados, tablas, semanas de sílabo y páginas sin texto. Los valores que recibe cambian entre pruebas.
 
+F7 añade reconstrucciones de un enunciado grupal y un anexo con fechas contradictorias, además de una página rasterizada con una imagen monocromática y sin capa de texto. El informe por campo y las pruebas de revisión están en [F7-VALIDATION.md](../../../docs/F7-VALIDATION.md).
+
 Las pruebas comparan campos y estados esperados. Los siete PDF personales usados para el benchmark permanecen en sus rutas originales, fuera del repositorio.

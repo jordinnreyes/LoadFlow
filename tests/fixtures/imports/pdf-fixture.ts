@@ -1,7 +1,7 @@
 type TextItem = string | [x: number, y: number, text: string];
 
-// A tiny synthetic, selectable PDF. Each item has a real PDF text position.
-export function pdfFixture(pages: TextItem[][]) {
+// A synthetic PDF with positioned text or an image-only page.
+export function pdfFixture(pages: (TextItem[] | "raster")[]) {
   const objects = new Map<number, string>();
   const pageIds = pages.map((_, i) => 4 + i * 2);
   objects.set(1, "<< /Type /Catalog /Pages 2 0 R >>");
@@ -15,14 +15,18 @@ export function pdfFixture(pages: TextItem[][]) {
   );
   for (const [index, page] of pages.entries()) {
     const id = pageIds[index];
-    const content = page
-      .map((item, i) => {
-        const [x, y, value] =
-          typeof item === "string" ? [30, 740 - i * 20, item] : item;
-        const literal = value.replace(/[\\()]/g, "\\$&");
-        return `BT /F1 10 Tf 1 0 0 1 ${x} ${y} Tm (${literal}) Tj ET`;
-      })
-      .join("\n");
+    // 16×8 monochrome image with no text layer.
+    const content =
+      page === "raster"
+        ? "q 320 0 0 160 40 560 cm\nBI /W 16 /H 8 /BPC 1 /CS /G /F /AHx ID\nffff11b4ee74eeb4ee3411a4ef80ffff>\nEI\nQ"
+        : page
+            .map((item, i) => {
+              const [x, y, value] =
+                typeof item === "string" ? [30, 740 - i * 20, item] : item;
+              const literal = value.replace(/[\\()]/g, "\\$&");
+              return `BT /F1 10 Tf 1 0 0 1 ${x} ${y} Tm (${literal}) Tj ET`;
+            })
+            .join("\n");
     objects.set(
       id,
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${id + 1} 0 R >>`,

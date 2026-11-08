@@ -275,9 +275,25 @@ test("F3 integrates private Storage, PostgreSQL drafts, confirmation, revisions 
     assert.equal(progress.statusCode, 200, progress.body);
     const newPdf = pdfFixture([
       [
-        "DAT2400 - Sistemas",
-        "8. SISTEMA DE EVALUACIÓN",
-        "Examen Parcial 20% Semana 8",
+        [30, 720, "MAT1200 - Matemáticas"],
+        [30, 690, "Curso"],
+        [125, 690, "Fecha"],
+        [260, 690, "Día"],
+        [330, 690, "Hora Inicio"],
+        [415, 690, "Hora Fin"],
+        [490, 690, "Evaluación"],
+        [30, 660, "MAT1200"],
+        [125, 660, "2030-03-22"],
+        [260, 660, "Viernes"],
+        [330, 660, "09:00"],
+        [415, 660, "10:00"],
+        [490, 660, "PC1"],
+        [30, 630, "MAT1200"],
+        [125, 630, "2030-03-22"],
+        [260, 630, "Viernes"],
+        [330, 630, "09:00"],
+        [415, 630, "10:00"],
+        [490, 630, "PC1"],
       ],
     ]);
     const changeUpload = await upload(newPdf, "replacement.pdf");
@@ -287,20 +303,27 @@ test("F3 integrates private Storage, PostgreSQL drafts, confirmation, revisions 
     await worker.tick();
     const changePath = api + "/imports/" + change.id;
     const newer = await f.request(a, "GET", changePath);
-    const row = (await f.request(a, "GET", changePath + "/candidates")).json()
-      .items[0];
+    const rows = (await f.request(a, "GET", changePath + "/candidates")).json()
+      .items;
+    assert.equal(rows.length, 2);
+    const [row, duplicateRow] = rows;
+    assert.ok(row.evidence.issues.includes("POSSIBLE_DUPLICATE_ROW"));
+    assert.ok(duplicateRow.evidence.issues.includes("POSSIBLE_DUPLICATE_ROW"));
+    assert.notEqual(
+      row.evidence.locator.row,
+      duplicateRow.evidence.locator.row,
+    );
+    assert.equal(row.draft.title, "PC1");
+    assert.equal(row.draft.type, "Práctica calificada");
+    assert.equal(row.draft.dueDate, "2030-03-22");
+    assert.equal(row.draft.dueTime, "09:00");
+    assert.equal(row.draft.endTime, "10:00");
+    assert.equal(row.draft.timezone, null);
     const updated = await f.request(
       a,
       "PATCH",
       api + "/import-candidates/" + row.id,
-      {
-        title: "PC1",
-        type: "Práctica calificada",
-        dueDate: "2030-03-22",
-        dueTime: "09:00",
-        endTime: "10:00",
-        timezone: "America/Lima",
-      },
+      { timezone: "America/Lima" },
       '"candidate-1"',
     );
     assert.equal(updated.statusCode, 200, updated.body);
@@ -335,6 +358,18 @@ test("F3 integrates private Storage, PostgreSQL drafts, confirmation, revisions 
     const proposalPath = api + "/plan-proposals/" + proposalId;
     const proposal = await f.request(a, "GET", proposalPath);
     assert.equal(proposal.json().source.kind, "import");
+    const unconfirmed = await f.request(
+      a,
+      "POST",
+      proposalPath + "/apply",
+      { confirmations: [] },
+      proposal.headers.etag as string,
+    );
+    assert.equal(unconfirmed.statusCode, 422, unconfirmed.body);
+    assert.equal(
+      (await f.request(a, "GET", api + "/activities/" + id)).json().dueDate,
+      "2030-03-21",
+    );
     const applied = await f.request(
       a,
       "POST",
@@ -345,18 +380,27 @@ test("F3 integrates private Storage, PostgreSQL drafts, confirmation, revisions 
     assert.equal(applied.statusCode, 200, applied.body);
     assert.equal(applied.json().dueDate, "2030-03-22");
     assert.equal(applied.json().operatingMinutes, 90);
+    assert.equal(
+      (await f.request(a, "GET", api + "/activities?periodId=" + period)).json()
+        .items.length,
+      1,
+    );
     const real = await f.request(
       a,
       "GET",
       api + "/activities/" + id + "/progress",
     );
     assert.equal(real.json().realTotalMinutes, 30);
-    assert.equal(
-      (
-        await f.request(a, "GET", api + "/activities/" + id + "/date-history")
-      ).json().items[0].source.kind,
-      "import",
+    const history = await f.request(
+      a,
+      "GET",
+      api + "/activities/" + id + "/date-history",
     );
+    assert.equal(history.statusCode, 200, history.body);
+    const dateChange = history.json().items[0];
+    assert.equal(dateChange.source.kind, "import");
+    assert.equal(dateChange.before.dueDate, "2030-03-21");
+    assert.equal(dateChange.after.dueDate, "2030-03-22");
     const removal = await f.request(
       a,
       "DELETE",

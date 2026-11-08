@@ -37,6 +37,11 @@ const STATES = {
   removed: "Retirada",
   expired: "Caducada",
 };
+const WARNINGS: Record<string, string> = {
+  PDF_PAGES_WITHOUT_TEXT: "Hay páginas del PDF sin texto seleccionable.",
+  XLSX_FORMULAS_NOT_EXECUTED:
+    "Revisa los valores de las fórmulas. Se leyeron los resultados guardados en el archivo.",
+};
 
 export function ConnectedImports({
   screen,
@@ -192,9 +197,11 @@ function ImportDetail({
       {summary.data.errorMessage && (
         <p role="alert">{summary.data.errorMessage}</p>
       )}
-      {summary.data.warnings.map((warning, index) => (
-        <p key={index}>{warning}</p>
-      ))}
+      {summary.data.warnings
+        .filter((warning) => warning !== "MANUAL_ENTRY_AVAILABLE")
+        .map((warning) => (
+          <p key={warning}>{WARNINGS[warning] ?? warning}</p>
+        ))}
       {summary.data.state === "failed" && summary.data.originalAvailable && (
         <Button
           disabled={write.busy}
