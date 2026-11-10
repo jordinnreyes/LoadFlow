@@ -134,14 +134,26 @@ test("the connected web build and API use one origin without serving files outsi
   for (const path of ["/.env", "/assets/%2e%2e/.env", "/api/v1/missing"])
     assert.equal((await app.inject(path)).statusCode, 404);
   assert.equal((await app.inject("/privacidad")).statusCode, 404);
+  assert.equal((await app.inject("/inicio")).statusCode, 404);
   const publicHome = await publicApp.inject("/");
   assert.match(publicHome.body, /data-google-only/);
   assert.match(
     publicHome.body,
     /name="google-site-verification" content="fixture-verification"/,
   );
+  assert.match(publicHome.body, /assets\/entry\.js/);
+  const overview = await publicApp.inject("/inicio");
+  assert.equal(overview.statusCode, 200);
+  assert.match(overview.headers["content-type"] ?? "", /text\/html/);
+  assert.match(overview.body, /<h1>WiseLoad<\/h1>/);
+  assert.match(overview.body, /planificador académico para estudiantes/);
+  assert.match(overview.body, /href="\/privacidad"/);
+  assert.match(overview.body, /href="\/#\/acceso"/);
+  assert.doesNotMatch(overview.body, /<script/);
   const privacy = await publicApp.inject("/privacidad");
   assert.equal(privacy.statusCode, 200);
+  assert.match(privacy.body, /Datos de Google Calendar/);
+  assert.match(privacy.body, /Conservación, eliminación y contacto/);
   assert.match(privacy.body, /mailto:soporte@example.test/);
   const otp = await publicApp.inject({
     method: "POST",

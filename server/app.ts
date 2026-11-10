@@ -27,7 +27,7 @@ import { planningRoutes } from "./modules/planning/routes.js";
 import { documentProtocol } from "./openapi.js";
 import { estimateRoutes } from "./modules/estimates/routes.js";
 import type { Estimates } from "./modules/estimates/service.js";
-import { privacyPage } from "./privacy.js";
+import { homePage, privacyPage } from "./public-pages.js";
 
 const webCsp =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
@@ -254,16 +254,18 @@ export async function buildApp(
           "<head>",
           `<head>\n    <meta name="google-site-verification" content="${options.publicWeb.googleSiteVerification}">`,
         );
-      const policy = privacyPage(options.publicWeb.privacyContact);
-      app.get(
-        "/privacidad",
-        { schema: { hide: true } },
-        async (_request, reply) =>
+      const pages = {
+        "/inicio": homePage(),
+        "/privacidad": privacyPage(options.publicWeb.privacyContact),
+      };
+      for (const [path, html] of Object.entries(pages)) {
+        app.get(path, { schema: { hide: true } }, async (_request, reply) =>
           reply
             .header("Content-Security-Policy", webCsp)
             .type("text/html; charset=utf-8")
-            .send(policy),
-      );
+            .send(html),
+        );
+      }
     }
     await app.register(staticFiles, {
       root: resolve(options.webRoot, "assets"),
