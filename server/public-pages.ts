@@ -1,10 +1,10 @@
-function publicPage(title: string, content: string) {
+function publicPage(title: string, content: string, siteVerification?: string) {
   return `<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${title}</title>
+${siteVerification ? `  <meta name="google-site-verification" content="${siteVerification}">\n` : ""}  <title>${title}</title>
   <style>
     body { max-width: 44rem; margin: 3rem auto; padding: 0 1.25rem; font: 1rem/1.65 system-ui, sans-serif; color: #e9edf6; background: #0f141c; }
     a { color: #a9c7ff; }
@@ -17,7 +17,15 @@ ${content}
 </html>`;
 }
 
-export function homePage() {
+export function homePage({
+  accessUrl = "/#/acceso",
+  privacyUrl = "/privacidad",
+  siteVerification,
+}: {
+  accessUrl?: string;
+  privacyUrl?: string;
+  siteVerification?: string;
+} = {}) {
   return publicPage(
     "WiseLoad · Planificador académico",
     `  <h1>WiseLoad</h1>
@@ -26,15 +34,16 @@ export function homePage() {
   <p>WiseLoad usa tu identidad de Google para iniciar sesión y guardar tu planificación en tu cuenta.</p>
   <h2>Conexión opcional con Google Calendar</h2>
   <p>Puedes definir tu disponibilidad manualmente o conectar Google Calendar. Con tu permiso, WiseLoad enumera tus calendarios y consulta la ocupación de los que selecciones para evitar programar estudio en esos bloques. Si activas la visualización de títulos, puedes ver los nombres de los eventos junto a tu planificación. La integración es de solo lectura.</p>
-  <p><a href="/#/acceso">Entrar a WiseLoad</a></p>
-  <footer><a href="/privacidad">Política de privacidad de WiseLoad</a></footer>`,
+  <p><a href="${accessUrl}">Entrar a WiseLoad</a></p>
+  <footer><a href="${privacyUrl}">Política de privacidad de WiseLoad</a></footer>`,
+    siteVerification,
   );
 }
 
-export function privacyPage(contact: string) {
+export function privacyPage(contact: string, homeUrl = "/inicio") {
   return publicPage(
     "Política de privacidad · WiseLoad",
-    `  <a href="/inicio">WiseLoad</a>
+    `  <a href="${homeUrl}">WiseLoad</a>
   <h1>Política de privacidad de WiseLoad</h1>
   <p>Esta política describe qué datos usa WiseLoad para ofrecer su planificador académico y cómo puedes controlar el acceso o solicitar su eliminación.</p>
   <h2>Cuenta y planificación</h2>
